@@ -1,0 +1,102 @@
+<html>
+  <head>
+    <script src="./categories.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.10"></script>
+    <style>
+td {
+  width: 76px;
+}
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <table border=1>
+        <tr v-for="(anotherCategories, thisCategory) in allDualCategories">
+          <td
+              v-for="(anotherCategory, ix) in anotherCategories"
+              :style="{ backgroundColor: colors[maxDamage[thisCategory][ix]] }">
+            {{ categories[thisCategory].label }}{{ categories[anotherCategory].label }}
+            {{ maxDamage[thisCategory][ix] }}
+          </td>
+        </tr>
+      </table>
+      <div>
+        <label>
+          <input type="radio" v-model="mode" value="def">打つ技の範囲
+        </label>
+        <label>
+          <input type="radio" v-model="mode" value="atk">受けるポケモンの範囲
+        </label>
+      </div>
+      <label v-for="(category, ix) in categories" v-if="category.label != '単'">
+        <input type="checkbox" v-model="targetTypes" :value="ix">{{ category.label }}
+      </label>
+    </div>
+    <script>
+const allDualCategories = [
+  [18],
+  [18, 0],
+  [18, 0, 1],
+  [18, 0, 1, 2],
+  [18, 0, 1, 2, 3],
+  [18, 0, 1, 2, 3, 4],
+  [18, 0, 1, 2, 3, 4, 5],
+  [18, 0, 1, 2, 3, 4, 5, 6],
+  [18, 0, 1, 2, 3, 4, 5, 6, 7],
+  [18, 0, 1, 2, 3, 4, 5, 6, 7, 8],
+  [18, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  [18, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+  [18, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+  [18, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+  [18, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+  [18, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+  [18, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+  [18, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+];
+
+const colors = {
+  "0": "#999",
+  "0.25": "#99f",
+  "0.5": "#ccf",
+  "1": "#fff",
+  "2": "#fcc",
+  "4": "#f99",
+};
+
+const vm = new Vue({
+  el: "#app",
+  data: () => ({
+    categories,
+    allDualCategories,
+    colors,
+    mode: "def",
+    targetTypes: [],
+  }),
+  computed: {
+    maxDamage() {
+      return (
+        allDualCategories.map((anotherCategories, thisCategory) => (
+          anotherCategories.map((anotherCategory) => {
+            if (this.mode === "def") {
+              const damages = this.targetTypes.map((moveType) => (
+                categories[moveType].atk[thisCategory] * categories[moveType].atk[anotherCategory]
+              ));
+              return damages.length ? Math.max.apply(null, damages) : null;
+            } else {
+              const damages = this.targetTypes.map((pokeType) => (
+                Math.max(
+                  categories[thisCategory].atk[pokeType],
+                  categories[anotherCategory].atk[pokeType],
+                )
+              ));
+              return damages.length ? Math.min.apply(null, damages) : null;
+            }
+          })
+        ))
+      );
+    },
+  },
+});
+    </script>
+  </body>
+</html>

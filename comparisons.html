@@ -1,0 +1,181 @@
+<html>
+  <head>
+    <script src="./categories.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.10"></script>
+    <style>
+td {
+  width: 76px;
+}
+table, section {
+  margin: 8px;
+}
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <table border=1>
+        <tr>
+          <td>
+          </td>
+          <td
+              v-for="(category, i) in categories"
+              v-if="category.label != '単'"
+              :style="{ backgroundColor: colors[maxScores[i]] }">
+            {{ category.label }}
+          </td>
+        </tr>
+        <tr v-for="(poke, i) in pokemons">
+          <td>
+            {{ labels[i] }}
+            <div v-if="!poke.atkonly && poke.teratype != null">
+              ＠{{ categories[poke.teratype].label }}
+            </div>
+          </td>
+          <td
+              v-for="(category, ix) in categories"
+              v-if="category.label != '単'"
+              :style="{ backgroundColor: colors[score[i][ix]] }">
+            <div v-if="!poke.defonly">
+              攻 {{ atk[i][ix] }}
+            </div>
+            <div v-if="!poke.atkonly">
+              受 {{ def[i][ix] }}
+            </div>
+            <div v-if="!poke.atkonly && poke.teratype != null">
+              テ {{ teradef[i][ix] }}
+            </div>
+          </td>
+        </tr>
+      </table>
+      <section v-for="(poke, i) in pokemons" :style="{ border: '1px solid' }">
+        <div>
+          <label>
+            <input type="checkbox" v-model="pokemons[i].defonly">
+            攻撃を考えない
+          </label>
+          <label>
+            <input type="checkbox" v-model="pokemons[i].atkonly">
+            受けを考えない
+          </label>
+        </div>
+        <div v-if="!poke.atkonly">
+          タイプ:
+          <label v-for="(category, j) in categories" v-if="category.label != '単'">
+            <input type="checkbox" v-model="pokemons[i].types" :value="j">
+            {{ category.label }}
+          </label>
+        </div>
+        <div v-if="!poke.defonly">
+          技範囲:
+          <label v-for="(category, j) in categories" v-if="category.label != '単'">
+            <input type="checkbox" v-model="pokemons[i].movetypes" :value="j">
+            {{ category.label }}
+          </label>
+        </div>
+        <div v-if="!poke.atkonly">
+          テラスタルで受ける:
+          <label>
+            <input type="radio" v-model="pokemons[i].teratype" :value="null">
+            -
+          </label>
+          <label v-for="(category, j) in categories" v-if="category.label != '単'">
+            <input type="radio" v-model="pokemons[i].teratype" :value="j">
+            {{ category.label }}
+          </label>
+        </div>
+        <button @click="removePoke(i)">
+          削除
+        </button>
+      </section>
+      <section>
+        <button @click="addPoke">
+          +
+        </button>
+      </section>
+    </div>
+    <script>
+const colors = {
+  "0": "#999",
+  "0.03125": "#33f",
+  "0.125": "#66f",
+  "0.25": "#99f",
+  "0.5": "#ccf",
+  "1": "#fff",
+  "2": "#fcc",
+  "4": "#f99",
+  "8": "#f66",
+  "16": "#f33",
+};
+
+const vm = new Vue({
+  el: "#app",
+  data: () => ({
+    categories,
+    colors,
+    /* { types, teratype, movetypes, atkonly } */
+    pokemons: [],
+  }),
+  computed: {
+    atk() {
+      return this.pokemons.map((poke) => (
+        categories.map((_, enemy) => (
+          poke.movetypes.reduce((l, r) => Math.max(l, categories[r].atk[enemy]), 0)
+        ))
+      ));
+    },
+    def() {
+      return this.pokemons.map((poke) => (
+        categories.map((_, enemy) => (
+          poke.types.reduce((l, r) => l * categories[enemy].atk[r], 1.0)
+        ))
+      ));
+    },
+    teradef() {
+      return this.pokemons.map((poke) => (
+        categories.map((_, enemy) => poke.teratype ? categories[enemy].atk[poke.teratype] : 4)
+      ));
+    },
+    labels() {
+      return this.pokemons.map((poke) => {
+        if (poke.atkonly) {
+          return poke.movetypes.map((mt) => categories[mt].label).join('');
+        } else {
+          const filteredMoves = poke.defonly ? [] : (
+            poke.movetypes.filter((mt) => !poke.types.find((t) => t === mt))
+          );
+          return poke.types.map((t) => categories[t].label).join('')
+               + (filteredMoves.length ? "＋" : "")
+               + filteredMoves.map((mt) => categories[mt].label).join('');
+        }
+      });
+    },
+    score() {
+      return this.pokemons.map((poke, i) => (
+        categories.map((_, j) => {
+          const atkscore = poke.defonly ? 1 : this.atk[i][j];
+          const defscore = poke.atkonly ? 1 : 1 / Math.min(
+            this.def[i][j] === 0 ? 0.5 : this.def[i][j],
+            this.teradef[i][j] === 0 ? 0.5 : this.teradef[i][j],
+          );
+          return atkscore * defscore;
+        })
+      ));
+    },
+    maxScores() {
+      return categories.map((_, i) => (
+        this.pokemons.reduce((l, _, j) => Math.max(l, this.score[j][i]), 0)
+      ));
+    },
+  },
+  methods: {
+    addPoke() {
+      this.pokemons.push({ types: [], movetypes: [], atkonly: false, teratype: null });
+    },
+    removePoke(ix) {
+      this.pokemons.splice(ix, 1);
+    },
+  },
+});
+    </script>
+  </body>
+</html>
