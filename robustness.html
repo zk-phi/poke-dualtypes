@@ -15,6 +15,10 @@
       </select>
     </p>
     <p>
+      火力指数：
+      <input type="number" v-model="moveStrength">
+    </p>
+    <p>
       フィルタ：
       <select v-model="filter">
         <option v-for="filter in filters" :value="filter.value">{{ filter.label }}</option>
@@ -28,12 +32,16 @@
     <table border=1>
       <tr>
         <td>相手ポケモン</td>
-        <td>必要火力</td>
+        <td v-if="moveStrength">ダメージ</td>
+        <td v-if="!moveStrength">乱１ライン</td>
+        <td v-if="!moveStrength">確１ライン</td>
         <td>タイプ相性</td>
       </tr>
       <tr v-for="poke in robustness">
         <td>{{ poke.label }}</td>
-        <td>{{ poke.value }}</td>
+        <td v-if="moveStrength">{{ poke.comment }}</td>
+        <td v-if="!moveStrength">{{ poke.valueMin }}</td>
+        <td v-if="!moveStrength">{{ poke.valueMax }}</td>
         <td>x{{ poke.effectiveness }}</td>
       </tr>
     </table>
@@ -65,17 +73,34 @@ const vm = new Vue({
     type: "ノーマル",
     category: "物理",
     filter: filters[0].value,
+    moveStrength: "",
   }),
   computed: {
     robustness() {
       return robustness.map((poke) => {
         const eff = poke.types.reduce((l, r) => l * effectiveness[this.type][r], 1);
+        const value = Math.floor(this.category === "物理" ? poke.hb : poke.hd);
+        const robustnessMin = Math.floor(value / eff / 0.44);
+        const robustnessMax = Math.floor(value / eff / 0.374);
+        const damageMin = this.moveStrength * eff * 0.375;
+        const damageMax = this.moveStrength * eff * 0.44;
+        const timesMax = Math.ceil(value / damageMin);
+        const timesMin = Math.ceil(value / damageMax);
+        const comment = timesMin === timesMax ? (
+          "確定" + timesMin + "発"
+        ) : (
+          "乱数" + timesMin + "発 (" +
+          Math.floor((value - damageMin * timesMin) / (damageMax - damageMin) / timesMin * 100) +
+          "%)"
+        );
         return {
           label: poke.label,
-          value: Math.floor((this.category === "物理" ? poke.hb : poke.hd) / eff / 0.44),
+          valueMin: robustnessMin,
+          valueMax: robustnessMax,
+          comment,
           effectiveness: eff,
         };
-      }).filter(this.filter).sort((l, r) => r.value - l.value);
+      }).filter(this.filter).sort((l, r) => r.valueMax - l.valueMax);
     }
   },
 });
