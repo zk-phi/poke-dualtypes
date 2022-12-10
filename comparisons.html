@@ -132,7 +132,9 @@ const vm = new Vue({
     },
     teradef() {
       return this.pokemons.map((poke) => (
-        categories.map((_, enemy) => poke.teratype ? categories[enemy].atk[poke.teratype] : 4)
+        categories.map((_, enemy) => (
+          poke.teratype != null ? categories[enemy].atk[poke.teratype] : 4
+        ))
       ));
     },
     labels() {
@@ -149,16 +151,22 @@ const vm = new Vue({
         }
       });
     },
+    defscore() {
+      return this.pokemons.map((poke, i) => (
+        categories.map((_, j) => poke.atkonly ? 1 : 1 / Math.min(
+          this.def[i][j] === 0 ? 0.25 : this.def[i][j],
+          this.teradef[i][j] === 0 ? 0.25 : this.teradef[i][j],
+        ))
+      ));
+    },
+    atkscore() {
+      return this.pokemons.map((poke, i) => (
+        categories.map((_, j) => poke.defonly ? 1 : this.atk[i][j])
+      ));
+    },
     score() {
       return this.pokemons.map((poke, i) => (
-        categories.map((_, j) => {
-          const atkscore = poke.defonly ? 1 : this.atk[i][j];
-          const defscore = poke.atkonly ? 1 : 1 / Math.min(
-            this.def[i][j] === 0 ? 0.5 : this.def[i][j],
-            this.teradef[i][j] === 0 ? 0.5 : this.teradef[i][j],
-          );
-          return atkscore * defscore;
-        })
+        categories.map((_, j) => this.atkscore[i][j] * this.defscore[i][j])
       ));
     },
     maxScores() {
