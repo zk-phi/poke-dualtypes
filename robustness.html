@@ -1,0 +1,83 @@
+<head>
+  <meta charset="utf-8"/>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.7.10"></script>
+</head>
+<body>
+  <div id="app">
+    <h2>どこまでワンパンできるかな</h2>
+    <p>
+      技：
+      <select v-model="type">
+        <option v-for="type in types" :value="type">{{ type }}</option>
+      </select>
+      <select v-model="category">
+        <option v-for="category in categories" :value="category">{{ category }}</option>
+      </select>
+    </p>
+    <p>
+      相性：
+      <select v-model="filter">
+        <option v-for="filter in filters" :value="filter.value">{{ filter.label }}</option>
+      </select>
+    </p>
+    <ul>
+      <li>バランス ... 努力値を総合耐久指数が最大になるように振り分けている相手</li>
+      <li>特化 ... 物理・特殊どちらかに努力値を全振りしている相手</li>
+      <li>火力 ... 威力 x 各種補正 x 攻撃力</li>
+    </ul>
+    <table border=1>
+      <tr>
+        <td>相手ポケモン</td>
+        <td>必要火力</td>
+        <td>タイプ相性</td>
+      </tr>
+      <tr v-for="poke in robustness">
+        <td>{{ poke.label }}</td>
+        <td>{{ poke.value }}</td>
+        <td>x{{ poke.effectiveness }}</td>
+      </tr>
+    </table>
+  </div>
+  <script src="./data.js"></script>
+  <script src="./robustness.js"></script>
+  <script>
+const filters = [{
+  label: "すべて",
+  value: (po) => po.effectiveness !== 0,
+}, {
+  label: "等倍以上",
+  value: (po) => po.effectiveness >= 1,
+}, {
+  label: "半減以下",
+  value: (po) => po.effectiveness <= 0.5 && po.effectiveness !== 0,
+}, {
+  label: "抜群以上",
+  value: (po) => po.effectiveness >= 2,
+}, {
+  label: "等倍",
+  value: (po) => po.effectiveness === 1,
+}];
+
+const vm = new Vue({
+  el: "#app",
+  data: () => ({
+    types,
+    type: "ノーマル",
+    category: "物理",
+    filter: filters[0].value,
+  }),
+  computed: {
+    robustness() {
+      return robustness.map((poke) => {
+        const eff = poke.types.reduce((l, r) => l * effectiveness[this.type][r], 1);
+        return {
+          label: poke.label,
+          value: Math.floor((this.category === "物理" ? poke.hb : poke.hd) / eff / 0.44),
+          effectiveness: eff,
+        };
+      }).filter(this.filter).sort((l, r) => r.value - l.value);
+    }
+  },
+});
+  </script>
+</body>
