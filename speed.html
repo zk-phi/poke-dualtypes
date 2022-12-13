@@ -1,0 +1,36 @@
+<head>
+  <meta charset="utf-8"/>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.7.10"></script>
+</head>
+<body>
+  <div id="app">
+    <h2>どこまで抜けるかな</h2>
+    <ul>
+      <li>最速 ... 252振り＋性格補正</li>
+      <li>準速 ... 252振り</li>
+      <li>最遅 ... 個体値０</li>
+    </ul>
+    <table border=1>
+      <tr>
+        <td>相手ポケモン</td>
+        <td>すばやさ実数値</td>
+      </tr>
+      <tr v-for="poke in speeds">
+        <td>{{ poke.label }}</td>
+        <td>{{ poke.s }}</td>
+      </tr>
+    </table>
+  </div>
+  <script src="./data.js"></script>
+  <script src="./speed.js"></script>
+  <script>
+const vm = new Vue({
+  el: "#app",
+  computed: {
+    speeds() {
+      return speeds.sort((a, b) => b.s - a.s);
+    },
+  },
+});
+  </script>
+</body>
