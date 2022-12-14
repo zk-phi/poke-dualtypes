@@ -632,6 +632,47 @@ const pokemons = {
   "ニャイキング": {types:["はがね"],stats:{h:70,a:110,b:100,c:50,d:60,s:50}},
 };
 
+const pickedupPokemons = {
+  "マスカーニャ": true,
+  "ラウドボーン": true,
+  "アーマーガア": true,
+  "ドオー": true,
+  "イッカネズミ": true,
+  "オリーヴァ": true,
+  "キノガッサ": true,
+  "ガブリアス": true,
+  "キョジオーン": true,
+  "ギャラドス": true,
+  "コノヨザル": true,
+  "ブラッキー": true,
+  "ニンフィア": true,
+  "モロバレル": true,
+  "ジバコイル": true,
+  "ミミッキュ": true,
+  "ハッサム": true,
+  "カバルドン": true,
+  "ウルガモス": true,
+  "ボーマンダ": true,
+  "デカヌチャン": true,
+  "オーロンゲ": true,
+  "イルカマン(ナイーブ)": true,
+  "イルカマン(マイティ)": true,
+  "ドラパルト": true,
+  "キラフロル": true,
+  "ヒートロトム": true,
+  "ウォッシュロトム": true,
+  "カットロトム": true,
+  "バンギラス": true,
+  "パルシェン": true,
+  "ドヒドイデ": true,
+  "カイリュー": true,
+  "ドドゲザン": true,
+  "サザンドラ": true,
+  "ヘイラッシャ": true,
+  "セグレイブ": true,
+  "サーフゴー": true,
+};
+
 const pokemonNames = Object.keys(pokemons);
 
 const moves = [

@@ -1,0 +1,495 @@
+<head>
+  <meta charset="utf-8"/>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.7.10"></script>
+  <style>
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+#app {
+  display: flex;
+  height: 100vh;
+}
+.column {
+  flex-grow: 1;
+  height: 100%;
+  overflow-y: scroll;
+  padding: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+table {
+  border-spacing: 0;
+  background: rgba(0, 0, 0, 0.05);
+}
+tr:first-child, td:first-child {
+  font-weight: bold;
+}
+td {
+  border: white 1px solid;
+  padding: 4px;
+}
+  </style>
+</head>
+<body>
+  <div id="app">
+
+    <datalist id="pokemon-names">
+      <option v-for="name in pokemonNames" :value="name" />
+    </datalist>
+
+    <datalist id="types">
+      <option v-for="type in allTypes" :value="type" />
+    </datalist>
+
+    <div class="column">
+      <h2>ステータス入力</h2>
+      <p>
+        ポケモン：<input list="pokemon-names" v-model="pokemonName">
+        {{ this.pokemonNameError ? "🚨" : "👍" }}
+      </p>
+      <div v-if="!pokemonNameError" class="statuses">
+        <p>
+          タイプ：{{ types.join(", ") }}
+          <table>
+            <tr>
+              <td></td>
+              <td>技タイプ</td>
+            </tr>
+            <tr v-for="value in [4, 2, 1, 0.5, 0.25, 0]">
+              <td>x {{ value }}</td>
+              <td>{{ defEffectiveness[value].join(", ") }}</td>
+            </tr>
+          </table>
+        </p>
+        <table>
+          <tr>
+            <td></td>
+            <td>種族値</td>
+            <td>個体値</td>
+            <td>努力値</td>
+            <td>性格補正</td>
+            <td>道具・特性等</td>
+            <td>lv50実数値</td>
+          </tr>
+          <tr @click="initDefenceTab">
+            <td>HP</td>
+            <td>{{ stats.h }}</td>
+            <td><input type="range" v-model="iv.h" min="0" max="31" step="1">{{ iv.h }}</td>
+            <td v-if="autoEv">{{ optStats.ev.h }}</td>
+            <td v-else><input type="range" v-model="ev.h" min="0" max="252" step="4">{{ ev.h }}</td>
+            <td>-</td>
+            <td>x <input type="number" v-model="bonus.h" min="0" max="2" step="0.1"></td>
+            <td>
+              {{ computedStats.h }}
+              <span v-if="bonus.h != 1">({{ computedStatsWithBonus.h }})</span>
+            </td>
+          </tr>
+          <tr @click="initAttackTab">
+            <td>攻撃</td>
+            <td>{{ stats.a }}</td>
+            <td><input type="range" v-model="iv.a" min="0" max="31" step="1">{{ iv.a }}</td>
+            <td><input type="range" v-model="ev.a" min="0" max="252" step="4">{{ ev.a }}</td>
+            <td><input type="range" v-model="n.a" min="0.9" max="1.1" step="0.1">{{ n.a }}</td>
+            <td>x <input type="number" v-model="bonus.a" min="0" max="2" step="0.1"></td>
+            <td>
+              {{ computedStats.a }}
+              <span v-if="bonus.a != 1">({{ computedStatsWithBonus.a }})</span>
+            </td>
+          </tr>
+          <tr @click="initDefenceTab">
+            <td>防御</td>
+            <td>{{ stats.b }}</td>
+            <td><input type="range" v-model="iv.b" min="0" max="31" step="1">{{ iv.b }}</td>
+            <td v-if="autoEv">{{ optStats.ev.b }}</td>
+            <td v-else><input type="range" v-model="ev.b" min="0" max="252" step="4">{{ ev.b }}</td>
+            <td v-if="autoEv">{{ optStats.n.b }}</td>
+            <td v-else><input type="range" v-model="n.b" min="0.9" max="1.1" step="0.1">{{ n.b }}</td>
+            <td>x <input type="number" v-model="bonus.b" min="0" max="2" step="0.1"></td>
+            <td>
+              {{ computedStats.b }}
+              <span v-if="bonus.b != 1">({{ computedStatsWithBonus.b }})</span>
+            </td>
+          </tr>
+          <tr @click="initSpAttackTab">
+            <td>特攻</td>
+            <td>{{ stats.c }}</td>
+            <td><input type="range" v-model="iv.c" min="0" max="31" step="1">{{ iv.c }}</td>
+            <td><input type="range" v-model="ev.c" min="0" max="252" step="4">{{ ev.c }}</td>
+            <td><input type="range" v-model="n.c" min="0.9" max="1.1" step="0.1">{{ n.c }}</td>
+            <td>x <input type="number" v-model="bonus.c" min="0" max="2" step="0.1"></td>
+            <td>
+              {{ computedStats.c }}
+              <span v-if="bonus.c != 1">({{ computedStatsWithBonus.c }})</span>
+            </td>
+          </tr>
+          <tr @click="initDefenceTab">
+            <td>特防</td>
+            <td>{{ stats.d }}</td>
+            <td><input type="range" v-model="iv.d" min="0" max="31" step="1">{{ iv.d }}</td>
+            <td v-if="autoEv">{{ optStats.ev.d }}</td>
+            <td v-else><input type="range" v-model="ev.d" min="0" max="252" step="4">{{ ev.d }}</td>
+            <td v-if="autoEv">{{ optStats.n.d }}</td>
+            <td v-else><input type="range" v-model="n.d" min="0.9" max="1.1" step="0.1">{{ n.d }}</td>
+            <td>x <input type="number" v-model="bonus.d" min="0" max="2" step="0.1"></td>
+            <td>
+              {{ computedStats.d }}
+              <span v-if="bonus.d != 1">({{ computedStatsWithBonus.d }})</span>
+            </td>
+          </tr>
+          <tr @click="initSpeedTab">
+            <td>素早</td>
+            <td>{{ stats.s }}</td>
+            <td><input type="range" v-model="iv.s" min="0" max="31" step="1">{{ iv.s }}</td>
+            <td><input type="range" v-model="ev.s" min="0" max="252" step="4">{{ ev.s }}</td>
+            <td><input type="range" v-model="n.s" min="0.9" max="1.1" step="0.1">{{ n.s }}</td>
+            <td>x <input type="number" v-model="bonus.s" min="0" max="2" step="0.1"></td>
+            <td>
+              {{ computedStats.s }}
+              <span v-if="bonus.s != 1">({{ computedStatsWithBonus.s }})</span>
+            </td>
+          </tr>
+          <tr>
+            <td>残り</td>
+            <td></td>
+            <td></td>
+            <td v-if="autoEv">{{ 508 - ev.a - ev.c - ev.s }}</td>
+            <td v-else>{{ 508 - ev.h - ev.a - ev.b - ev.c - ev.d - ev.s }}</td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+        </table>
+        <p>
+          <label><input type="checkbox" v-model="autoEv"> 耐久を自動で振る</label>
+          <span v-if="autoEv">
+            (物理寄り
+            <input type="range" min="0" max="1" step="0.01" v-model="autoEvRatio">
+            {{ Math.floor(autoEvRatio * 100) + "%" }}
+            特殊寄り)
+          </span>
+        </p>
+        <p>
+          ワンパンライン：
+          物理{{ Math.floor(computedStatsWithBonus.h * computedStatsWithBonus.b / 0.44) }} -
+          特殊{{ Math.floor(computedStatsWithBonus.h * computedStatsWithBonus.d / 0.44) }}
+        </p>
+      </div>
+    </div>
+
+    <div v-if="tab === 'speed'" class="column">
+      <h2>すばやさ調整</h2>
+      <ul>
+        <li>最速 ... 252振り＋性格補正</li>
+        <li>準速 ... 252振り</li>
+        <li>最遅 ... 個体値０</li>
+      </ul>
+      <p>
+        フィルタ：
+        <select v-model="speed.filter">
+          <option
+              v-for="filter in speedFilters"
+              :value="filter.value">
+            {{ filter.label }}
+          </option>
+        </select>
+      </p>
+      <table>
+        <tr>
+          <td>相手ポケモン</td>
+          <td>すばやさ実数値</td>
+        </tr>
+        <tr v-for="poke in speeds">
+          <td>{{ poke.label }}</td>
+          <td>{{ poke.s }}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div v-if="tab === 'attack'" class="column">
+      <h2>ダメージ計算</h2>
+      <table>
+        <tr>
+          <td>技タイプ</td>
+          <td>分類</td>
+          <td>威力</td>
+          <td>タイプ一致</td>
+          <td>ランク上昇</td>
+          <td>天候</td>
+          <td>その他補正</td>
+          <td>実数値</td>
+          <td>火力</td>
+        </tr>
+        <tr>
+          <td><input list="types" v-model="move.type"></td>
+          <td>{{ move.category }}</td>
+          <td><input type="number" v-model="move.strength" min="0" max="200" step="1"></td>
+          <td>{{ moveIsSameType ? "x 1.5" : "x 1" }}</td>
+          <td>x <input type="number" v-model="move.bonuses.rank" min="0" max="2" step="0.5"></td>
+          <td>x <input type="number" v-model="move.bonuses.weather" min="0" max="2" step="0.5"></td>
+          <td>x <input type="number" v-model="move.bonuses.others" min="0" max="2" step="0.1"></td>
+          <td>{{ moveComputedStrength }}</td>
+          <td>{{ moveComputedValue }}</td>
+        </tr>
+      </table>
+      <ul>
+        <li>最適 ... 物理・特殊バランス良く振った個体 (HBD/(B+D) が最大)</li>
+        <li>特化 ... 物理・特殊どちらかに全振りしている個体 (HB または HD が最大)</li>
+        <li>火力 ... 威力 x 各種バフ x 攻撃力</li>
+      </ul>
+      <p>
+        フィルタ：
+        <select v-model="move.filter">
+          <option
+              v-for="filter in robustnessFilters"
+              :value="filter.value">
+            {{ filter.label }}
+          </option>
+        </select>
+      </p>
+      <table>
+        <tr>
+          <td>相手ポケモン</td>
+          <td>ダメージ</td>
+          <td>タイプ相性</td>
+        </tr>
+        <tr v-for="poke in robustnesses">
+          <td>{{ poke.label }}</td>
+          <td>{{ poke.comment }}</td>
+          <td>x {{ poke.effectiveness }}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div v-if="tab === 'defence'" class="column">
+      <h2>どこまで耐えられるかな</h2>
+      WIP
+    </div>
+
+  </div>
+  <script src="./data.js"></script>
+  <script src="./speed.js"></script>
+  <script src="./robustness.js"></script>
+  <script>
+const numbifyStats = (stats) => ({
+  h: Number(stats.h),
+  a: Number(stats.a),
+  b: Number(stats.b),
+  c: Number(stats.c),
+  d: Number(stats.d),
+  s: Number(stats.s),
+});
+
+const robustnessFilters = [{
+  label: "ピックアップ",
+  value: (po) => !!pickedupPokemons[po.name] && po.effectiveness !== 0,
+}, {
+  label: "すべて (無効以外)",
+  value: (po) => po.effectiveness !== 0,
+}, {
+  label: "等倍以上",
+  value: (po) => po.effectiveness >= 1,
+}, {
+  label: "半減以下",
+  value: (po) => po.effectiveness <= 0.5 && po.effectiveness !== 0,
+}, {
+  label: "抜群以上",
+  value: (po) => po.effectiveness >= 2,
+}, {
+  label: "等倍",
+  value: (po) => po.effectiveness === 1,
+}];
+
+const speedFilters = [{
+  label: "ピックアップ",
+  value: (po) => !!pickedupPokemons[po.name],
+}, {
+  label: "すべて",
+  value: (po) => true,
+}];
+
+const vm = new Vue({
+  el: "#app",
+  data: () => ({
+    pokemonNames,
+    allTypes: types,
+    robustnessFilters,
+    pokemonName: "",
+    pokemonNameError: true,
+    types: ["ノーマル"],
+    stats: { h: 0, a: 0, b: 0, c: 0, d: 0, s: 0 },
+    iv: { h: 31, a: 31, b: 31, c: 31, d: 31, s: 31 },
+    ev: { h: 0, a: 0, b: 0, c: 0, d: 0, s: 0 },
+    n: { a: 1, b: 1, c: 1, d: 1, s: 1 },
+    bonus: { h: 1, a: 1, b: 1, c: 1, d: 1, s: 1 },
+    autoEv: true,
+    autoEvRatio: 0.5,
+    tab: "",
+    speed: {
+      filter: speedFilters[0].value,
+    },
+    move: {
+      category: "物理",
+      type: "ノーマル",
+      strength: 90,
+      bonuses: { rank: 1, weather: 1, others: 1 },
+      filter: robustnessFilters[0].value,
+    }
+  }),
+  watch: {
+    pokemonName() {
+      const pokemon = pokemons[this.pokemonName];
+      if (pokemon) {
+        this.pokemonNameError = false;
+        this.types = pokemon.types;
+        this.stats = pokemon.stats;
+        this.iv = { h: 31, a: 31, b: 31, c: 31, d: 31, s: 31 };
+        this.ev = { h: 0, a: 0, b: 0, c: 0, d: 0, s: 0 };
+        this.n = { a: 1, b: 1, c: 1, d: 1, s: 1 };
+        this.bonus = { h: 1, a: 1, b: 1, c: 1, d: 1, s: 1 };
+      } else {
+        this.pokemonNameError = true;
+      }
+    },
+  },
+  computed: {
+    defEffectiveness() {
+      const res = { 4: [], 2: [], 1: [], 0.5: [], 0.25: [], 0: [] };
+      types.forEach((t) => {
+        res[this.types.reduce((l, r) => l * effectiveness[t][r], 1)].push(t);
+      });
+      return res;
+    },
+    optStats() {
+      if (this.autoEv) {
+        return bruteOptimizeHBD({
+          stats: this.stats,
+          iv: numbifyStats(this.iv),
+          ev: numbifyStats({ h: 0, a: this.ev.a, b: 0, c: this.ev.c, d: 0, s: this.ev.s }),
+          n: numbifyStats(this.n),
+          bonus: numbifyStats(this.bonus),
+        }, this.autoEvRatio);
+      } else {
+        return { n: this.n, ev: this.ev };
+      }
+    },
+    computedStats() {
+      const baseStats = {
+        h: Math.floor(this.stats.h + this.iv.h / 2 + this.optStats.ev.h / 8) + 60,
+        a: Math.floor(this.stats.a + this.iv.a / 2 + this.optStats.ev.a / 8) + 5,
+        b: Math.floor(this.stats.b + this.iv.b / 2 + this.optStats.ev.b / 8) + 5,
+        c: Math.floor(this.stats.c + this.iv.c / 2 + this.optStats.ev.c / 8) + 5,
+        d: Math.floor(this.stats.d + this.iv.d / 2 + this.optStats.ev.d / 8) + 5,
+        s: Math.floor(this.stats.s + this.iv.s / 2 + this.optStats.ev.s / 8) + 5,
+      };
+      return {
+        h: baseStats.h,
+        a: Math.floor(baseStats.a * this.optStats.n.a),
+        b: Math.floor(baseStats.b * this.optStats.n.b),
+        c: Math.floor(baseStats.c * this.optStats.n.c),
+        d: Math.floor(baseStats.d * this.optStats.n.d),
+        s: Math.floor(baseStats.s * this.optStats.n.s),
+      };
+    },
+    computedStatsWithBonus() {
+      return {
+        h: Math.floor(this.computedStats.h * this.bonus.h),
+        a: Math.floor(this.computedStats.a * this.bonus.a),
+        b: Math.floor(this.computedStats.b * this.bonus.b),
+        c: Math.floor(this.computedStats.c * this.bonus.c),
+        d: Math.floor(this.computedStats.d * this.bonus.d),
+        s: Math.floor(this.computedStats.s * this.bonus.s),
+      };
+    },
+    speeds() {
+      return speeds.sort((a, b) => b.s - a.s).filter(this.speed.filter);
+    },
+    moveIsSameType() {
+      return this.types.includes(this.move.type);
+    },
+    moveComputedStrength() {
+      return Math.floor(
+        this.move.strength * this.move.bonuses.rank *
+        this.move.bonuses.weather * this.move.bonuses.others *
+        (this.moveIsSameType ? 1.5 : 1)
+      );
+    },
+    moveComputedValue() {
+      const stats = this.computedStatsWithBonus[this.move.category === "物理" ? "a" : "c"];
+      return this.moveComputedStrength * stats;
+    },
+    robustnesses() {
+      return robustness.map((poke) => {
+        const eff = types.includes(this.move.type) ? (
+          poke.types.reduce((l, r) => l * effectiveness[this.move.type][r], 1)
+        ) : 1;
+        const value = Math.floor(this.move.category === "物理" ? poke.hb : poke.hd);
+        const robustnessMin = Math.floor(value / eff / 0.44);
+        const robustnessMax = Math.floor(value / eff / 0.374);
+        const damageMin = this.moveComputedValue * eff * 0.375;
+        const damageMax = this.moveComputedValue * eff * 0.44;
+        const timesMax = Math.ceil(value / damageMin);
+        const timesMin = Math.ceil(value / damageMax);
+        const comment = timesMin === timesMax ? (
+          "確定" + timesMin + "発"
+        ) : (
+          "乱数" + timesMin + "発 (" +
+          Math.round(
+            (1 - (value - damageMin * timesMin) / (damageMax - damageMin) / timesMin) * 100
+          ) +
+          "%)"
+        );
+        return {
+          name: poke.name,
+          label: poke.label,
+          valueMin: robustnessMin,
+          valueMax: robustnessMax,
+          comment,
+          effectiveness: eff,
+        };
+      }).filter(this.move.filter).sort((l, r) => r.valueMax - l.valueMax);
+    },
+  },
+  methods: {
+    initSpeedTab() {
+      if (this.tab !== "speed") {
+        this.tab = "speed";
+        this.speed = {
+          filter: speedFilters[0].value,
+        };
+      }
+    },
+    initAttackTab() {
+      if (this.tab !== "attack" || this.move.category !== "物理") {
+        this.tab = "attack";
+        this.move = {
+          category: "物理",
+          type: "ノーマル",
+          strength: 90,
+          bonuses: { rank: 1, weather: 1, others: 1 },
+          filter: robustnessFilters[0].value,
+        };
+      }
+    },
+    initSpAttackTab() {
+      if (this.tab !== "attack" || this.move.category !== "特殊") {
+        this.tab = "attack";
+        this.move = {
+          category: "特殊",
+          type: "ノーマル",
+          strength: 90,
+          bonuses: { rank: 1, weather: 1, others: 1 },
+          filter: robustnessFilters[0].value,
+        };
+      }
+    },
+    initDefenceTab() {
+      if (this.tab !== "defence") {
+        this.tab = "defence";
+      }
+    },
+  },
+});
+  </script>
+</body>
