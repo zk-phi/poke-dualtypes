@@ -46,7 +46,7 @@ td {
     </datalist>
 
     <div class="column glow">
-      <h2>ポケモン育成支援（仮）</h2>
+      <h2>ポケモン育成支援</h2>
 
       <p>
         ポケモン：<input list="pokemon-names" v-model="pokemonName">
@@ -55,7 +55,7 @@ td {
 
       <div v-if="!pokemonNameError" class="statuses">
         <p>
-          タイプ：{{ types.join(", ") }}（テラスタル <input list="types" v-model="teratype" />）
+          タイプ：{{ types.join(", ") }}（テラスタイプ <input list="types" v-model="teratype" />）
         </p>
 
         <p>
@@ -252,6 +252,8 @@ td {
             {{ f(autoEvRatio * 100) + "%" }}
             特殊寄り)
           </span>
+          <br />
+          <small>※ 総合耐久指数 HBD/(B+D) が最大になる振り方を提案します</small>
         </p>
 
         <p>
@@ -271,14 +273,18 @@ td {
         category="物理"
         :show="tab === 'attack'"
         :types="types"
-        :computed-attack="computedStats.withBonus.a">
+        :teratype="teratype"
+        :computed-attack="computedStats.a"
+        :item-bonus="bonus.a">
     </robustness-list>
 
     <robustness-list
         category="特殊"
         :show="tab === 'special-attack'"
         :types="types"
-        :computed-attack="computedStats.withBonus.c">
+        :teratype="teratype"
+        :computed-attack="computedStats.c"
+        :item-bonus="bonus.c">
     </robustness-list>
 
     <div v-if="tab === 'defence'" class="column">
@@ -327,26 +333,23 @@ td {
           <td>タイプ一致</td>
           <td>ランク上昇</td>
           <td>天候</td>
-          <td>その他補正</td>
-          <td>実数値</td>
-          <td>火力</td>
+          <td>その他</td>
+          <td>テラスタル</td>
         </tr>
         <tr>
           <td><input list="types" v-model="move.type"></td>
           <td>{{ category }}</td>
           <td><input type="number" v-model="move.strength" min="0" max="200" step="1"></td>
-          <td>{{ moveIsSameType ? "x 1.5" : "x 1" }}</td>
+          <td>x {{ sameTypeBonus }}</td>
           <td>x <input type="number" v-model="move.bonuses.rank" min="0" max="2" step="0.5"></td>
           <td>x <input type="number" v-model="move.bonuses.weather" min="0" max="2" step="0.5"></td>
           <td>x <input type="number" v-model="move.bonuses.others" min="0" max="2" step="0.1"></td>
-          <td>{{ computedStrength }}</td>
-          <td>{{ computedValue }}</td>
+          <td><input type="checkbox" v-model="move.terastal" /></td>
         </tr>
       </table>
       <ul>
-        <li>最適 ... 物理・特殊バランス良く振った個体 (HBD/(B+D) が最大)</li>
-        <li>特化 ... 物理・特殊どちらかに全振りしている個体 (HB または HD が最大)</li>
-        <li>火力 ... 威力 x 各種バフ x 攻撃力</li>
+        <li>HBD ... 物理・特殊バランス良く振った個体 (HBD/(B+D) が最大)</li>
+        <li>HB/HD ... 物理・特殊どちらかに全振りしている個体 (HB または HD が最大)</li>
       </ul>
       <p>
         フィルタ：
@@ -362,11 +365,13 @@ td {
         <tr>
           <td>相手ポケモン</td>
           <td>ダメージ</td>
-          <td>タイプ相性</td>
+          <td>相性</td>
         </tr>
         <tr v-for="poke in list">
           <td>{{ poke.label }}</td>
-          <td>{{ poke.comment }}</td>
+          <td :style="{ backgroundImage: poke.gradient }">
+            {{ r(poke.minDamageRatio * 100) }}〜{{ r(poke.maxDamageRatio * 100) }}%
+          </td>
           <td>x {{ poke.effectiveness }}</td>
         </tr>
       </table>
@@ -376,16 +381,18 @@ td {
   <script src="./data.js"></script>
   <script>
 const f = Math.floor;
+const r = Math.round;
+const c = Math.ceil;
 
 const colors = {
-  "0": "rgba(0, 0, 0, 0.2)",
-  "0.25": "rgba(0, 0, 255, 0.3)",
-  "0.5": "rgba(0, 0, 255, 0.1)",
+  "0": "rgba(0, 0, 0, 0.3)",
+  "0.25": "rgba(0, 0, 255, 0.4)",
+  "0.5": "rgba(0, 0, 255, 0.2)",
   "1": "transparent",
-  "2": "rgba(255, 0, 0, 0.1)",
-  "4": "rgba(255, 0, 0, 0.3)",
-  "false": "rgba(255, 0, 0, 0.1)",
-  "true": "rgba(0, 0, 255, 0.1)",
+  "2": "rgba(255, 0, 0, 0.2)",
+  "4": "rgba(255, 0, 0, 0.4)",
+  "false": "rgba(255, 0, 0, 0.2)",
+  "true": "rgba(0, 0, 255, 0.2)",
 };
 
 const hexPoints = (values, size) => (
@@ -552,12 +559,15 @@ const RobustnessList = Vue.component("robustness-list", {
     show: { type: Boolean, required: true },
     category: { type: String, required: true },
     types: { type: Array, required: true },
+    teratype: { type: String, required: true },
     computedAttack: { type: Number, required: true },
+    itemBonus: { type: Number, required: true },
   },
   data: () => ({
     filters: robustnessFilters,
     filter: robustnessFilters[0].value,
     move: {
+      terastal: false,
       category: "物理",
       type: "ノーマル",
       strength: 90,
@@ -565,20 +575,16 @@ const RobustnessList = Vue.component("robustness-list", {
     },
   }),
   computed: {
-    moveIsSameType() {
-      return this.types.includes(this.move.type);
+    sameTypeBonus() {
+      if (this.move.terastal && this.types.includes(this.teratype)) {
+        return this.types.includes(this.move.type) ? 2 : 1;
+      } else if (this.move.terastal && this.move.type === this.teratype) {
+        return 1.5;
+      } else {
+        return this.types.includes(this.move.type) ? 1.5 : 1;
+      }
     },
-    computedStrength() {
-      return f(
-        this.move.strength *
-        this.move.bonuses.rank * this.move.bonuses.weather * this.move.bonuses.others *
-        (this.moveIsSameType ? 1.5 : 1)
-      );
-    },
-    computedValue() {
-      return this.computedStrength * this.computedAttack;
-    },
-    robustness() {
+    patterns() {
       return pokemonNames.flatMap((name) => {
         const { stats, types } = pokemons[name];
         const iv = { h: 31, a:31, b: 31, c: 31, d: 31, h: 31 };
@@ -588,77 +594,80 @@ const RobustnessList = Vue.component("robustness-list", {
         const n   = { a: 1,   b: 1, c: 1, d: 1, s: 1 };
         const noN = { a: 1.1, b: 1, c: 1, d: 1, s: 1 };
         const bonus = { h: 1, a: 1, b: 1, c: 1, d: 1, s: 1 };
-        const hbMin  = bruteOptimizeHBD({ stats, iv, ev: ev4,   n: noN, bonus }, 0.0);
-        const hdMin  = bruteOptimizeHBD({ stats, iv, ev: ev4,   n: noN, bonus }, 1.0);
-        const hb256  = bruteOptimizeHBD({ stats, iv, ev: ev256, n: noN, bonus }, 0.0);
-        const hd256  = bruteOptimizeHBD({ stats, iv, ev: ev256, n: noN, bonus }, 1.0);
-        const hbd256 = bruteOptimizeHBD({ stats, iv, ev: ev256, n: noN, bonus }, 0.5);
-        const hb508  = bruteOptimizeHBD({ stats, iv, ev: ev508, n: n  , bonus }, 0.0);
-        const hd508  = bruteOptimizeHBD({ stats, iv, ev: ev508, n: n  , bonus }, 1.0);
-        const hbd508 = bruteOptimizeHBD({ stats, iv, ev: ev508, n: n  , bonus }, 0.5);
+        const extreme = this.category === "物理" ? 0 : 1;
+        const extremeTag = this.category === "物理" ? "HB" : "HD";
         return [{
           name,
-          label: name + " 4振り",
-          hb: hbMin.value.h * hbMin.value.b,
-          hd: hdMin.value.h * hdMin.value.d,
-          types,
+          types: pokemons[name].types,
+          tag: `４振り（${extremeTag}）`,
+          ...bruteOptimizeHBD({ stats, iv, ev: ev4, n: noN, bonus }, extreme),
         }, {
           name,
-          label: name + " 256振り (最適)",
-          hb: hbd256.value.h * hbd256.value.b,
-          hd: hbd256.value.h * hbd256.value.d,
-          types,
+          types: pokemons[name].types,
+          tag: `２５６振り (${extremeTag})`,
+          ...bruteOptimizeHBD({ stats, iv, ev: ev256, n: noN, bonus }, extreme),
         }, {
           name,
-          label: name + " 256振り (特化)",
-          hb: hb256.value.h * hb256.value.b,
-          hd: hd256.value.h * hd256.value.d,
-          types,
+          types: pokemons[name].types,
+          tag: "２５６振り（HBD）",
+          ...bruteOptimizeHBD({ stats, iv, ev: ev256, n: noN, bonus }, 0.5),
         }, {
           name,
-          label: name + " 508振り＋補正 (最適)",
-          hb: hbd508.value.h * hbd508.value.b,
-          hd: hbd508.value.h * hbd508.value.d,
-          types,
+          types: pokemons[name].types,
+          tag: `５０８振り＋補正（${extremeTag}）`,
+          ...bruteOptimizeHBD({ stats, iv, ev: ev508, n: n, bonus }, extreme),
         }, {
           name,
-          label: name + " 508振り＋補正 (特化)",
-          hb: hb508.value.h * hb508.value.b,
-          hd: hd508.value.h * hd508.value.d,
-          types,
+          types: pokemons[name].types,
+          tag: `５０８振り＋補正（HBD）`,
+          ...bruteOptimizeHBD({ stats, iv, ev: ev508, n: n, bonus }, 0.5),
         }];
       });
     },
     list() {
-      return this.robustness.map((poke) => {
-        const eff = types.includes(this.move.type) ? (
-          poke.types.reduce((l, r) => l * effectiveness[this.move.type][r], 1)
+      return this.patterns.map((p) => {
+        const typeIsValid = types.includes(this.move.type);
+        const eff = typeIsValid ? (
+          p.types.reduce((l, r) => l * effectiveness[this.move.type][r], 1)
         ) : 1;
-        const value = f(this.move.category === "物理" ? poke.hb : poke.hd);
-        const robustnessMin = f(value / eff / 0.44);
-        const robustnessMax = f(value / eff / 0.374);
-        const damageMin = this.computedValue * eff * 0.375;
-        const damageMax = this.computedValue * eff * 0.44;
-        const timesMax = Math.ceil(value / damageMin);
-        const timesMin = Math.ceil(value / damageMax);
-        const comment = timesMin === timesMax ? (
-          "確定" + timesMin + "発"
-        ) : (
-          "乱数" + timesMin + "発 (" +
-          Math.round(
-            (1 - (value - damageMin * timesMin) / (damageMax - damageMin) / timesMin) * 100
-          ) +
-          "%)"
+        const defence = this.category === "物理" ? p.value.b : p.value.d;
+        const attack = f(this.computedAttack * this.move.bonuses.rank);
+        const baseDamage = r(
+          f(f(22 * this.move.strength * attack / defence) / 50 + 2) * this.move.bonuses.weather
+        );
+        const minBaseDamage = f(baseDamage * 0.85);
+        const maxDamage = f(r(baseDamage * this.sameTypeBonus) * eff);
+        const minDamage = f(r(minBaseDamage * this.sameTypeBonus) * eff);
+        const maxDamageWithBonus = r(
+          r(maxDamage * this.itemBonus) * this.move.bonuses.others
+        );
+        const minDamageWithBonus = r(
+          r(minDamage * this.itemBonus) * this.move.bonuses.others
+        );
+        const minDamageRatio = minDamageWithBonus / p.value.h;
+        const maxDamageRatio = maxDamageWithBonus / p.value.h;
+        const gradient = (
+          "linear-gradient(to right, " +
+          "rgba(255, 0, 0, 0.2) 0%, " +
+          "rgba(255, 0, 0, 0.2) " + (minDamageRatio * 100) + "%, " +
+          "rgba(255, 0, 0, 0.1) " + (minDamageRatio * 100) + "%, " +
+          "rgba(255, 0, 0, 0.1) " + (maxDamageRatio * 100) + "%, " +
+          "transparent " + (maxDamageRatio * 100) + "%" +
+          ")"
         );
         return {
-          name: poke.name,
-          label: poke.label,
-          valueMin: robustnessMin,
-          valueMax: robustnessMax,
-          comment,
+          name: p.name,
+          label: `${p.name} ${p.tag}`,
+          hp: p.value.h,
+          minDamage: minDamageWithBonus,
+          maxDamage: maxDamageWithBonus,
+          minDamageRatio,
+          maxDamageRatio,
           effectiveness: eff,
+          robustness: defence * p.value.h / eff,
+          gradient,
         };
-      }).filter(this.filter).sort((l, r) => r.valueMax - l.valueMax);
+      }).filter(this.filter).sort((l, r) => r.robustness - l.robustness);
     },
   },
 });
