@@ -214,11 +214,6 @@ td {
   <script type="text/x-template" id="speed-list">
     <div v-if="show" class="column">
       <h2>すばやさ調整</h2>
-      <ul>
-        <li>最速 ... 252振り＋性格補正</li>
-        <li>準速 ... 252振り</li>
-        <li>最遅 ... 個体値０</li>
-      </ul>
       <p>
         フィルタ：
         <select v-model="filter">
@@ -387,28 +382,28 @@ const SpeedList = Vue.component("speed-list", {
     list() {
       return pokemonNames.flatMap((name) => [{
         name,
-        label: name + " 最遅",
+        label: name + " 個体値0",
         s: pokemons[name].stats.s + 5,
       }, {
         name,
-        label: name + " 無振り",
-        s: f(pokemons[name].stats.s + 31 / 2) + 5,
+        label: name + " 4振り",
+        s: pokemons[name].stats.s + 21,
       }, {
         name,
-        label: name + " 準速",
-        s: f(pokemons[name].stats.s + 31 / 2 + 252 / 8) + 5,
+        label: name + " 252振り",
+        s: pokemons[name].stats.s + 52,
       }, {
         name,
-        label: name + " 最速",
-        s: f((f(pokemons[name].stats.s + 31 / 2 + 252 / 8) + 5) * 1.1),
+        label: name + " 252振り＋補正",
+        s: f((pokemons[name].stats.s + 52) * 1.1),
       }, {
         name,
-        label: name + " 準速スカーフ",
-        s: f((f(pokemons[name].stats.s + 31 / 2 + 252 / 8) + 5) * 1.5),
+        label: name + " 252振り＋スカーフ",
+        s: f((pokemons[name].stats.s + 52) * 1.5),
       }, {
         name,
-        label: name + " 最速スカーフ",
-        s: f(f((f(pokemons[name].stats.s + 31 / 2 + 252 / 8) + 5) * 1.1) * 1.5),
+        label: name + " 252振り＋補正＋スカーフ",
+        s: f(f((pokemons[name].stats.s + 52) * 1.1) * 1.5),
       }]).sort((a, b) => b.s - a.s).filter(this.filter);
     },
   },
@@ -468,7 +463,7 @@ const RobustnessList = Vue.component("robustness-list", {
     },
     robustness() {
       return pokemonNames.flatMap((name) => {
-        const po = pokemons[name];
+        const { stats, types } = pokemons[name];
         const iv = { h: 31, a:31, b: 31, c: 31, d: 31, h: 31 };
         const ev508 = { h: 0, a: 0,   b: 0, c: 0, d: 0, s: 0 };
         const ev256 = { h: 0, a: 252, b: 0, c: 0, d: 0, s: 0 };
@@ -476,44 +471,44 @@ const RobustnessList = Vue.component("robustness-list", {
         const n   = { a: 1,   b: 1, c: 1, d: 1, s: 1 };
         const noN = { a: 1.1, b: 1, c: 1, d: 1, s: 1 };
         const bonus = { h: 1, a: 1, b: 1, c: 1, d: 1, s: 1 };
-        const hbMin  = bruteOptimizeHBD({ stats: po.stats, iv, ev: ev4,   n: noN, bonus }, 0);
-        const hdMin  = bruteOptimizeHBD({ stats: po.stats, iv, ev: ev4,   n: noN, bonus }, 1);
-        const hb256  = bruteOptimizeHBD({ stats: po.stats, iv, ev: ev256, n: noN, bonus }, 0);
-        const hd256  = bruteOptimizeHBD({ stats: po.stats, iv, ev: ev256, n: noN, bonus }, 1);
-        const hbd256 = bruteOptimizeHBD({ stats: po.stats, iv, ev: ev256, n: noN, bonus }, 0.5);
-        const hb508  = bruteOptimizeHBD({ stats: po.stats, iv, ev: ev508, n: n  , bonus }, 0);
-        const hd508  = bruteOptimizeHBD({ stats: po.stats, iv, ev: ev508, n: n  , bonus }, 1);
-        const hbd508 = bruteOptimizeHBD({ stats: po.stats, iv, ev: ev508, n: n  , bonus }, 0.5);
+        const hbMin  = bruteOptimizeHBD({ stats, iv, ev: ev4,   n: noN, bonus }, 0.0);
+        const hdMin  = bruteOptimizeHBD({ stats, iv, ev: ev4,   n: noN, bonus }, 1.0);
+        const hb256  = bruteOptimizeHBD({ stats, iv, ev: ev256, n: noN, bonus }, 0.0);
+        const hd256  = bruteOptimizeHBD({ stats, iv, ev: ev256, n: noN, bonus }, 1.0);
+        const hbd256 = bruteOptimizeHBD({ stats, iv, ev: ev256, n: noN, bonus }, 0.5);
+        const hb508  = bruteOptimizeHBD({ stats, iv, ev: ev508, n: n  , bonus }, 0.0);
+        const hd508  = bruteOptimizeHBD({ stats, iv, ev: ev508, n: n  , bonus }, 1.0);
+        const hbd508 = bruteOptimizeHBD({ stats, iv, ev: ev508, n: n  , bonus }, 0.5);
         return [{
           name,
           label: name + " 4振り",
           hb: hbMin.value.h * hbMin.value.b,
           hd: hdMin.value.h * hdMin.value.d,
-          types: po.types,
+          types,
         }, {
           name,
           label: name + " 256振り (最適)",
           hb: hbd256.value.h * hbd256.value.b,
           hd: hbd256.value.h * hbd256.value.d,
-          types: po.types,
+          types,
         }, {
           name,
           label: name + " 256振り (特化)",
           hb: hb256.value.h * hb256.value.b,
           hd: hd256.value.h * hd256.value.d,
-          types: po.types,
+          types,
         }, {
           name,
           label: name + " 508振り＋補正 (最適)",
           hb: hbd508.value.h * hbd508.value.b,
           hd: hbd508.value.h * hbd508.value.d,
-          types: po.types,
+          types,
         }, {
           name,
           label: name + " 508振り＋補正 (特化)",
           hb: hb508.value.h * hb508.value.b,
           hd: hd508.value.h * hd508.value.d,
-          types: po.types,
+          types,
         }];
       });
     },
