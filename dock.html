@@ -84,7 +84,7 @@ td {
         <p>
           <table>
             <tr>
-              <td rowspan="6">
+              <td rowspan="7">
                 <svg height="256" width="256" viewBox="0, 0, 300, 300">
                   <polygon
                       v-for="polygon in chartPolygons"
@@ -94,6 +94,10 @@ td {
                       :points="polygon.points" />
                 </svg>
               </td>
+              <td></td>
+              <td>lv50実数値</td>
+            </tr>
+            <tr>
               <td>HP</td>
               <td>
                 {{ computedStats.h }}
