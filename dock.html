@@ -44,7 +44,7 @@ td {
     </datalist>
 
     <div class="column">
-      <h2>ポケモン育成支援 pokedock（仮）</h2>
+      <h2>ポケモン育成支援（仮）</h2>
 
       <p>
         ポケモン：<input list="pokemon-names" v-model="pokemonName">
@@ -66,14 +66,14 @@ td {
               <td>通常</td>
               <td v-for="effectiveness in defEffectiveness"
                   :style="{ backgroundColor: colors[effectiveness] }">
-                x {{ effectiveness }}
+                {{ effectiveness }}
               </td>
             </tr>
             <tr>
               <td>テラス</td>
               <td v-for="type in allTypes"
                   :style="{ backgroundColor: colors[effectiveness[type][teratype]] }">
-                x {{ effectiveness[type][teratype] }}
+                {{ effectiveness[type][teratype] }}
               </td>
             </tr>
           </table>
@@ -82,7 +82,7 @@ td {
         <p>
           <table>
             <tr>
-              <td rowspan="7">
+              <td rowspan="6">
                 <svg height="256" width="256" viewBox="0, 0, 300, 300">
                   <polygon
                       v-for="polygon in chartPolygons"
@@ -92,53 +92,49 @@ td {
                       :points="polygon.points" />
                 </svg>
               </td>
-              <td></td>
-              <td>lv50実数値</td>
-            </tr>
-            <tr>
               <td>HP</td>
               <td>
                 {{ computedStats.h }}
-                <span v-if="bonus.h != 1">({{ computedStatsWithBonus.h }})</span>
+                <span v-if="bonus.h != 1">({{ computedStats.widthBonus.h }})</span>
               </td>
             </tr>
             <tr>
               <td>攻撃</td>
               <td>
                 {{ computedStats.a }}
-                <span v-if="bonus.a != 1">({{ computedStatsWithBonus.a }})</span>
+                <span v-if="bonus.a != 1">({{ computedStats.withBonus.a }})</span>
               </td>
             </tr>
             <tr>
               <td>防御</td>
               <td>
                 {{ computedStats.b }}
-                <span v-if="bonus.b != 1">({{ computedStatsWithBonus.b }})</span>
+                <span v-if="bonus.b != 1">({{ computedStats.withBonus.b }})</span>
               </td>
             </tr>
             <tr>
               <td>特攻</td>
               <td>
                 {{ computedStats.c }}
-                <span v-if="bonus.c != 1">({{ computedStatsWithBonus.c }})</span>
+                <span v-if="bonus.c != 1">({{ computedStats.withBonus.c }})</span>
               </td>
             </tr>
             <tr>
               <td>特防</td>
               <td>
                 {{ computedStats.d }}
-                <span v-if="bonus.d != 1">({{ computedStatsWithBonus.d }})</span>
+                <span v-if="bonus.d != 1">({{ computedStats.withBonus.d }})</span>
               </td>
             </tr>
             <tr>
               <td>素早</td>
               <td>
                 {{ computedStats.s }}
-                <span v-if="bonus.s != 1">({{ computedStatsWithBonus.s }})</span>
+                <span v-if="bonus.s != 1">({{ computedStats.withBonus.s }})</span>
               </td>
             </tr>
           </table>
-          <small>※ 青三角が正三角形のとき理想的な耐久指数 (H=B+D∧B=D) になります</small>
+          <small>※ 青三角が正三角形のとき効率的な耐久指数 (H=B+D∧B=D) になります</small>
         </p>
 
         <h3>努力値振り</h3>
@@ -165,7 +161,10 @@ td {
             <td v-else><input type="range" v-model="ev.h" min="0" max="252" step="4">{{ ev.h }}</td>
             <td>-</td>
             <td>x <input type="number" v-model="bonus.h" min="0" max="2" step="0.1"></td>
-            <td>{{ computedStatsAtLevel.h }}</td>
+            <td>
+              {{ computedStatsAtLevel.h }}
+              <span v-if="bonus.h != 1">({{ computedStatsAtLevel.withBonus.h }})</span>
+            </td>
           </tr>
           <tr @click="tab = 'attack'">
             <td>攻撃</td>
@@ -174,7 +173,10 @@ td {
             <td><input type="range" v-model="ev.a" min="0" max="252" step="4">{{ ev.a }}</td>
             <td><input type="range" v-model="n.a" min="0.9" max="1.1" step="0.1">{{ n.a }}</td>
             <td>x <input type="number" v-model="bonus.a" min="0" max="2" step="0.1"></td>
-            <td>{{ computedStatsAtLevel.a }}</td>
+            <td>
+              {{ computedStatsAtLevel.a }}
+              <span v-if="bonus.a != 1">({{ computedStatsAtLevel.withBonus.a }})</span>
+            </td>
           </tr>
           <tr @click="initDefenceTab">
             <td>防御</td>
@@ -185,7 +187,10 @@ td {
             <td v-if="autoEv">{{ optStats.n.b }}</td>
             <td v-else><input type="range" v-model="n.b" min="0.9" max="1.1" step="0.1">{{ n.b }}</td>
             <td>x <input type="number" v-model="bonus.b" min="0" max="2" step="0.1"></td>
-            <td>{{ computedStatsAtLevel.b }}</td>
+            <td>
+              {{ computedStatsAtLevel.b }}
+              <span v-if="bonus.b != 1">({{ computedStatsAtLevel.withBonus.b }})</span>
+            </td>
           </tr>
           <tr @click="tab = 'special-attack'">
             <td>特攻</td>
@@ -194,7 +199,10 @@ td {
             <td><input type="range" v-model="ev.c" min="0" max="252" step="4">{{ ev.c }}</td>
             <td><input type="range" v-model="n.c" min="0.9" max="1.1" step="0.1">{{ n.c }}</td>
             <td>x <input type="number" v-model="bonus.c" min="0" max="2" step="0.1"></td>
-            <td>{{ computedStatsAtLevel.c }}</td>
+            <td>
+              {{ computedStatsAtLevel.c }}
+              <span v-if="bonus.c != 1">({{ computedStatsAtLevel.withBonus.c }})</span>
+            </td>
           </tr>
           <tr @click="initDefenceTab">
             <td>特防</td>
@@ -205,7 +213,10 @@ td {
             <td v-if="autoEv">{{ optStats.n.d }}</td>
             <td v-else><input type="range" v-model="n.d" min="0.9" max="1.1" step="0.1">{{ n.d }}</td>
             <td>x <input type="number" v-model="bonus.d" min="0" max="2" step="0.1"></td>
-            <td>{{ computedStatsAtLevel.d }}</td>
+            <td>
+              {{ computedStatsAtLevel.d }}
+              <span v-if="bonus.d != 1">({{ computedStatsAtLevel.withBonus.d }})</span>
+            </td>
           </tr>
           <tr @click="tab = 'speed'">
             <td>素早</td>
@@ -214,7 +225,10 @@ td {
             <td><input type="range" v-model="ev.s" min="0" max="252" step="4">{{ ev.s }}</td>
             <td><input type="range" v-model="n.s" min="0.9" max="1.1" step="0.1">{{ n.s }}</td>
             <td>x <input type="number" v-model="bonus.s" min="0" max="2" step="0.1"></td>
-            <td>{{ computedStatsAtLevel.s }}</td>
+            <td>
+              {{ computedStatsAtLevel.s }}
+              <span v-if="bonus.s != 1">({{ computedStatsAtLevel.withBonus.s }})</span>
+            </td>
           </tr>
           <tr>
             <td>残り</td>
@@ -240,8 +254,8 @@ td {
 
         <p>
           ワンパンライン：
-          物理{{ f(computedStatsWithBonus.h * computedStatsWithBonus.b / 0.44) }} -
-          特殊{{ f(computedStatsWithBonus.h * computedStatsWithBonus.d / 0.44) }}
+          物理{{ f(computedStats.withBonus.h * computedStats.withBonus.b / 0.44) }} -
+          特殊{{ f(computedStats.withBonus.h * computedStats.withBonus.d / 0.44) }}
         </p>
       </div>
     </div>
@@ -254,14 +268,14 @@ td {
         category="物理"
         :show="tab === 'attack'"
         :types="types"
-        :computed-attack="computedStatsWithBonus.a">
+        :computed-attack="computedStats.withBonus.a">
     </robustness-list>
 
     <robustness-list
         category="特殊"
         :show="tab === 'special-attack'"
         :types="types"
-        :computed-attack="computedStatsWithBonus.c">
+        :computed-attack="computedStats.withBonus.c">
     </robustness-list>
 
     <div v-if="tab === 'defence'" class="column">
@@ -428,6 +442,36 @@ const bruteOptimizeHBD = ({ stats, iv, ev, n, bonus }, balance = 0.5) => {
   }
 
   return { n: maxN, ev: maxEv, value: maxValue };
+};
+
+const evaluateStats = ({ stats, ev, iv, n, bonus }, level) => {
+  const baseStats = {
+    h: f((stats.h * 2 + iv.h + f(ev.h / 4)) * level / 100),
+    a: f((stats.a * 2 + iv.a + f(ev.a / 4)) * level / 100),
+    b: f((stats.b * 2 + iv.b + f(ev.b / 4)) * level / 100),
+    c: f((stats.c * 2 + iv.c + f(ev.c / 4)) * level / 100),
+    d: f((stats.d * 2 + iv.d + f(ev.d / 4)) * level / 100),
+    s: f((stats.s * 2 + iv.s + f(ev.s / 4)) * level / 100),
+  };
+  const computedStats = {
+    h: baseStats.h + Number(level) + 10,
+    a: f((baseStats.a + 5) * n.a),
+    b: f((baseStats.b + 5) * n.b),
+    c: f((baseStats.c + 5) * n.c),
+    d: f((baseStats.d + 5) * n.d),
+    s: f((baseStats.s + 5) * n.s),
+  };
+  return {
+    ...computedStats,
+    withBonus: {
+      h: f(computedStats.h * bonus.h),
+      a: f(computedStats.a * bonus.a),
+      b: f(computedStats.b * bonus.b),
+      c: f(computedStats.c * bonus.c),
+      d: f(computedStats.d * bonus.d),
+      s: f(computedStats.s * bonus.s),
+    },
+  };
 };
 
 const speedFilters = [{
@@ -670,55 +714,27 @@ const vm = new Vue({
       }
     },
     computedStats() {
-      const baseStats = {
-        h: f(this.stats.h + this.iv.h / 2 + this.optStats.ev.h / 8) + 60,
-        a: f(this.stats.a + this.iv.a / 2 + this.optStats.ev.a / 8) + 5,
-        b: f(this.stats.b + this.iv.b / 2 + this.optStats.ev.b / 8) + 5,
-        c: f(this.stats.c + this.iv.c / 2 + this.optStats.ev.c / 8) + 5,
-        d: f(this.stats.d + this.iv.d / 2 + this.optStats.ev.d / 8) + 5,
-        s: f(this.stats.s + this.iv.s / 2 + this.optStats.ev.s / 8) + 5,
-      };
-      return {
-        h: baseStats.h,
-        a: f(baseStats.a * this.optStats.n.a),
-        b: f(baseStats.b * this.optStats.n.b),
-        c: f(baseStats.c * this.optStats.n.c),
-        d: f(baseStats.d * this.optStats.n.d),
-        s: f(baseStats.s * this.optStats.n.s),
-      };
+      return evaluateStats({
+        stats: numbifyStats(this.stats),
+        iv: numbifyStats(this.iv),
+        ev: numbifyStats(this.optStats.ev),
+        n: numbifyStats(this.optStats.n),
+        bonus: numbifyStats(this.bonus),
+      }, 50);
     },
     computedStatsAtLevel() {
-      const baseStats = {
-        h: f((this.stats.h * 2 + this.iv.h + f(this.optStats.ev.h / 4)) * this.level / 100),
-        a: f((this.stats.a * 2 + this.iv.a + f(this.optStats.ev.a / 4)) * this.level / 100),
-        b: f((this.stats.b * 2 + this.iv.b + f(this.optStats.ev.b / 4)) * this.level / 100),
-        c: f((this.stats.c * 2 + this.iv.c + f(this.optStats.ev.c / 4)) * this.level / 100),
-        d: f((this.stats.d * 2 + this.iv.d + f(this.optStats.ev.d / 4)) * this.level / 100),
-        s: f((this.stats.s * 2 + this.iv.s + f(this.optStats.ev.s / 4)) * this.level / 100),
-      };
-      return {
-        h: baseStats.h + Number(this.level) + 10,
-        a: f((baseStats.a + 5) * this.optStats.n.a),
-        b: f((baseStats.b + 5) * this.optStats.n.b),
-        c: f((baseStats.c + 5) * this.optStats.n.c),
-        d: f((baseStats.d + 5) * this.optStats.n.d),
-        s: f((baseStats.s + 5) * this.optStats.n.s),
-      };
-    },
-    computedStatsWithBonus() {
-      return {
-        h: f(this.computedStats.h * this.bonus.h),
-        a: f(this.computedStats.a * this.bonus.a),
-        b: f(this.computedStats.b * this.bonus.b),
-        c: f(this.computedStats.c * this.bonus.c),
-        d: f(this.computedStats.d * this.bonus.d),
-        s: f(this.computedStats.s * this.bonus.s),
-      };
+      return evaluateStats({
+        stats: numbifyStats(this.stats),
+        iv: numbifyStats(this.iv),
+        ev: numbifyStats(this.optStats.ev),
+        n: numbifyStats(this.optStats.n),
+        bonus: numbifyStats(this.bonus),
+      }, this.level);
     },
     chartPolygons() {
       const { h, a, b, c, d, s } = this.stats;
       const { h: ch, a: ca, b: cb, c: cc, d: cd, s: cs } = this.computedStats;
-      const { h: wh, a: wa, b: wb, c: wc, d: wd, s: ws } = this.computedStatsWithBonus;
+      const { h: wh, a: wa, b: wb, c: wc, d: wd, s: ws } = this.computedStats.withBonus;
       return [{
         points: hexPoints([350, 175, 175, 175, 175, 175], 300),
         fill: "rgba(0, 0, 0, 0.05)",
