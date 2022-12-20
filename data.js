@@ -656,7 +656,9 @@ const pokemons = {
 const pickedupPokemons = {
   "マスカーニャ": true,
   "ラウドボーン": true,
+  "パーモット": true,
   "アーマーガア": true,
+  "マリルリ": true,
   "ドオー": true,
   "イッカネズミ": true,
   "オリーヴァ": true,
@@ -665,6 +667,7 @@ const pickedupPokemons = {
   "キョジオーン": true,
   "ギャラドス": true,
   "コノヨザル": true,
+  "グレンアルマ": true,
   "ブラッキー": true,
   "ニンフィア": true,
   "モロバレル": true,
