@@ -13,11 +13,13 @@ body {
   height: 100vh;
 }
 .column {
-  flex-grow: 1;
   height: 100%;
   overflow-y: scroll;
   padding: 16px;
   border: 1px solid rgba(0, 0, 0, 0.1);
+}
+.column.glow {
+  flex-grow: 2;
 }
 table {
   border-spacing: 0;
@@ -43,7 +45,7 @@ td {
       <option v-for="type in allTypes" :value="type" />
     </datalist>
 
-    <div class="column">
+    <div class="column glow">
       <h2>ポケモン育成支援（仮）</h2>
 
       <p>
@@ -261,7 +263,8 @@ td {
     </div>
 
     <speed-list
-        :show="tab === 'speed'">
+        :show="tab === 'speed'"
+        :computed-speed="computedStats.withBonus.s">
     </speed-list>
 
     <robustness-list
@@ -301,11 +304,13 @@ td {
       <table>
         <tr>
           <td>相手ポケモン</td>
-          <td>すばやさ実数値</td>
+          <td>実数値</td>
+          <td>スカーフ</td>
         </tr>
         <tr v-for="poke in list">
           <td>{{ poke.label }}</td>
-          <td>{{ poke.s }}</td>
+          <td :style="{ backgroundColor: colors[poke.value < computedSpeed] }">{{ poke.value }}</td>
+          <td :style="{ backgroundColor: colors[poke.scarf < computedSpeed] }">{{ poke.scarf }}</td>
         </tr>
       </table>
     </div>
@@ -379,6 +384,8 @@ const colors = {
   "1": "transparent",
   "2": "rgba(255, 0, 0, 0.1)",
   "4": "rgba(255, 0, 0, 0.3)",
+  "false": "rgba(255, 0, 0, 0.1)",
+  "true": "rgba(0, 0, 255, 0.1)",
 };
 
 const hexPoints = (values, size) => (
@@ -486,6 +493,7 @@ const SpeedList = Vue.component("speed-list", {
   template: "#speed-list",
   props: {
     show: { type: Boolean, required: true },
+    computedSpeed: { type: Number, required: true },
   },
   data: () => ({
     filters: speedFilters,
@@ -496,28 +504,24 @@ const SpeedList = Vue.component("speed-list", {
       return pokemonNames.flatMap((name) => [{
         name,
         label: name + " 個体値0",
-        s: pokemons[name].stats.s + 5,
+        value: pokemons[name].stats.s + 5,
+        scarf: f((pokemons[name].stats.s + 5) * 1.5),
       }, {
         name,
         label: name + " 4振り",
-        s: pokemons[name].stats.s + 21,
+        value: pokemons[name].stats.s + 21,
+        scarf: f((pokemons[name].stats.s + 21) * 1.5),
       }, {
         name,
         label: name + " 252振り",
-        s: pokemons[name].stats.s + 52,
+        value: pokemons[name].stats.s + 52,
+        scarf: f((pokemons[name].stats.s + 52) * 1.5),
       }, {
         name,
         label: name + " 252振り＋補正",
-        s: f((pokemons[name].stats.s + 52) * 1.1),
-      }, {
-        name,
-        label: name + " 252振り＋スカーフ",
-        s: f((pokemons[name].stats.s + 52) * 1.5),
-      }, {
-        name,
-        label: name + " 252振り＋補正＋スカーフ",
-        s: f(f((pokemons[name].stats.s + 52) * 1.1) * 1.5),
-      }]).sort((a, b) => b.s - a.s).filter(this.filter);
+        value: f((pokemons[name].stats.s + 52) * 1.1),
+        scarf: f(f((pokemons[name].stats.s + 52) * 1.1) * 1.5),
+      }]).sort((a, b) => b.value - a.value).filter(this.filter);
     },
   },
 });
