@@ -63,6 +63,14 @@ td {
             </tr>
           </table>
         </p>
+        <svg height="256" width="256" viewBox="0, 0, 300, 300">
+          <polygon
+              v-for="polygon in chartPolygons"
+              stroke-width="2"
+              :fill="polygon.fill || 'none'"
+              :stroke="polygon.stroke || 'none'"
+              :points="polygon.points" />
+        </svg>
         <table>
           <tr>
             <td></td>
@@ -86,7 +94,7 @@ td {
               <span v-if="bonus.h != 1">({{ computedStatsWithBonus.h }})</span>
             </td>
           </tr>
-          <tr @click="initAttackTab">
+          <tr @click="tab = 'attack'">
             <td>攻撃</td>
             <td>{{ stats.a }}</td>
             <td><input type="range" v-model="iv.a" min="0" max="31" step="1">{{ iv.a }}</td>
@@ -112,7 +120,7 @@ td {
               <span v-if="bonus.b != 1">({{ computedStatsWithBonus.b }})</span>
             </td>
           </tr>
-          <tr @click="initSpAttackTab">
+          <tr @click="tab = 'special-attack'">
             <td>特攻</td>
             <td>{{ stats.c }}</td>
             <td><input type="range" v-model="iv.c" min="0" max="31" step="1">{{ iv.c }}</td>
@@ -138,7 +146,7 @@ td {
               <span v-if="bonus.d != 1">({{ computedStatsWithBonus.d }})</span>
             </td>
           </tr>
-          <tr @click="initSpeedTab">
+          <tr @click="tab = 'speed'">
             <td>素早</td>
             <td>{{ stats.s }}</td>
             <td><input type="range" v-model="iv.s" min="0" max="31" step="1">{{ iv.s }}</td>
@@ -166,19 +174,45 @@ td {
           <span v-if="autoEv">
             (物理寄り
             <input type="range" min="0" max="1" step="0.01" v-model="autoEvRatio">
-            {{ Math.floor(autoEvRatio * 100) + "%" }}
+            {{ f(autoEvRatio * 100) + "%" }}
             特殊寄り)
           </span>
         </p>
         <p>
           ワンパンライン：
-          物理{{ Math.floor(computedStatsWithBonus.h * computedStatsWithBonus.b / 0.44) }} -
-          特殊{{ Math.floor(computedStatsWithBonus.h * computedStatsWithBonus.d / 0.44) }}
+          物理{{ f(computedStatsWithBonus.h * computedStatsWithBonus.b / 0.44) }} -
+          特殊{{ f(computedStatsWithBonus.h * computedStatsWithBonus.d / 0.44) }}
         </p>
       </div>
     </div>
 
-    <div v-if="tab === 'speed'" class="column">
+    <speed-list
+        :show="tab === 'speed'">
+    </speed-list>
+
+    <robustness-list
+        category="物理"
+        :show="tab === 'attack'"
+        :types="types"
+        :computed-attack="computedStatsWithBonus.a">
+    </robustness-list>
+
+    <robustness-list
+        category="特殊"
+        :show="tab === 'special-attack'"
+        :types="types"
+        :computed-attack="computedStatsWithBonus.c">
+    </robustness-list>
+
+    <div v-if="tab === 'defence'" class="column">
+      <h2>どこまで耐えられるかな</h2>
+      WIP
+    </div>
+
+  </div>
+
+  <script type="text/x-template" id="speed-list">
+    <div v-if="show" class="column">
       <h2>すばやさ調整</h2>
       <ul>
         <li>最速 ... 252振り＋性格補正</li>
@@ -187,9 +221,9 @@ td {
       </ul>
       <p>
         フィルタ：
-        <select v-model="speed.filter">
+        <select v-model="filter">
           <option
-              v-for="filter in speedFilters"
+              v-for="filter in filters"
               :value="filter.value">
             {{ filter.label }}
           </option>
@@ -200,14 +234,16 @@ td {
           <td>相手ポケモン</td>
           <td>すばやさ実数値</td>
         </tr>
-        <tr v-for="poke in speeds">
+        <tr v-for="poke in list">
           <td>{{ poke.label }}</td>
           <td>{{ poke.s }}</td>
         </tr>
       </table>
     </div>
+  </script>
 
-    <div v-if="tab === 'attack'" class="column">
+  <script type="text/x-template" id="robustness-list">
+    <div v-if="show" class="column">
       <h2>ダメージ計算</h2>
       <table>
         <tr>
@@ -223,14 +259,14 @@ td {
         </tr>
         <tr>
           <td><input list="types" v-model="move.type"></td>
-          <td>{{ move.category }}</td>
+          <td>{{ category }}</td>
           <td><input type="number" v-model="move.strength" min="0" max="200" step="1"></td>
           <td>{{ moveIsSameType ? "x 1.5" : "x 1" }}</td>
           <td>x <input type="number" v-model="move.bonuses.rank" min="0" max="2" step="0.5"></td>
           <td>x <input type="number" v-model="move.bonuses.weather" min="0" max="2" step="0.5"></td>
           <td>x <input type="number" v-model="move.bonuses.others" min="0" max="2" step="0.1"></td>
-          <td>{{ moveComputedStrength }}</td>
-          <td>{{ moveComputedValue }}</td>
+          <td>{{ computedStrength }}</td>
+          <td>{{ computedValue }}</td>
         </tr>
       </table>
       <ul>
@@ -240,9 +276,9 @@ td {
       </ul>
       <p>
         フィルタ：
-        <select v-model="move.filter">
+        <select v-model="filter">
           <option
-              v-for="filter in robustnessFilters"
+              v-for="filter in filters"
               :value="filter.value">
             {{ filter.label }}
           </option>
@@ -254,24 +290,31 @@ td {
           <td>ダメージ</td>
           <td>タイプ相性</td>
         </tr>
-        <tr v-for="poke in robustnesses">
+        <tr v-for="poke in list">
           <td>{{ poke.label }}</td>
           <td>{{ poke.comment }}</td>
           <td>x {{ poke.effectiveness }}</td>
         </tr>
       </table>
     </div>
+  </script>
 
-    <div v-if="tab === 'defence'" class="column">
-      <h2>どこまで耐えられるかな</h2>
-      WIP
-    </div>
-
-  </div>
   <script src="./data.js"></script>
-  <script src="./speed.js"></script>
   <script src="./robustness.js"></script>
   <script>
+const f = Math.floor;
+
+const hexPoints = (values, size) => (
+  values.map((value, ix) => {
+    if (value == null) return "";
+    const angle = ((60 * ix) - 90) * Math.PI / 180;
+    const val = ix === 0 ? value / 350 : value / 175;
+    const x = Math.cos(angle) * val * (size / 2) + (size / 2);
+    const y = Math.sin(angle) * val * (size / 2) + (size / 2);
+    return `${x},${y}`;
+  }).join(" ")
+);
+
 const numbifyStats = (stats) => ({
   h: Number(stats.h),
   a: Number(stats.a),
@@ -279,6 +322,54 @@ const numbifyStats = (stats) => ({
   c: Number(stats.c),
   d: Number(stats.d),
   s: Number(stats.s),
+});
+
+const speedFilters = [{
+  label: "ピックアップ",
+  value: (po) => !!pickedupPokemons[po.name],
+}, {
+  label: "すべて",
+  value: (po) => true,
+}];
+
+const SpeedList = Vue.component("speed-list", {
+  template: "#speed-list",
+  props: {
+    show: { type: Boolean, required: true },
+  },
+  data: () => ({
+    filters: speedFilters,
+    filter: speedFilters[0].value,
+  }),
+  computed: {
+    list() {
+      return pokemonNames.flatMap((name) => [{
+        name,
+        label: name + " 最遅",
+        s: pokemons[name].stats.s + 5,
+      }, {
+        name,
+        label: name + " 無振り",
+        s: f(pokemons[name].stats.s + 31 / 2) + 5,
+      }, {
+        name,
+        label: name + " 準速",
+        s: f(pokemons[name].stats.s + 31 / 2 + 252 / 8) + 5,
+      }, {
+        name,
+        label: name + " 最速",
+        s: f((f(pokemons[name].stats.s + 31 / 2 + 252 / 8) + 5) * 1.1),
+      }, {
+        name,
+        label: name + " 準速スカーフ",
+        s: f((f(pokemons[name].stats.s + 31 / 2 + 252 / 8) + 5) * 1.5),
+      }, {
+        name,
+        label: name + " 最速スカーフ",
+        s: f(f((f(pokemons[name].stats.s + 31 / 2 + 252 / 8) + 5) * 1.1) * 1.5),
+      }]).sort((a, b) => b.s - a.s).filter(this.filter);
+    },
+  },
 });
 
 const robustnessFilters = [{
@@ -301,20 +392,77 @@ const robustnessFilters = [{
   value: (po) => po.effectiveness === 1,
 }];
 
-const speedFilters = [{
-  label: "ピックアップ",
-  value: (po) => !!pickedupPokemons[po.name],
-}, {
-  label: "すべて",
-  value: (po) => true,
-}];
+const RobustnessList = Vue.component("robustness-list", {
+  template: "#robustness-list",
+  props: {
+    show: { type: Boolean, required: true },
+    category: { type: String, required: true },
+    types: { type: Array, required: true },
+    computedAttack: { type: Number, required: true },
+  },
+  data: () => ({
+    filters: robustnessFilters,
+    filter: robustnessFilters[0].value,
+    move: {
+      category: "物理",
+      type: "ノーマル",
+      strength: 90,
+      bonuses: { rank: 1, weather: 1, others: 1 },
+    },
+  }),
+  computed: {
+    moveIsSameType() {
+      return this.types.includes(this.move.type);
+    },
+    computedStrength() {
+      return f(
+        this.move.strength *
+        this.move.bonuses.rank * this.move.bonuses.weather * this.move.bonuses.others *
+        (this.moveIsSameType ? 1.5 : 1)
+      );
+    },
+    computedValue() {
+      return this.computedStrength * this.computedAttack;
+    },
+    list() {
+      return robustness.map((poke) => {
+        const eff = types.includes(this.move.type) ? (
+          poke.types.reduce((l, r) => l * effectiveness[this.move.type][r], 1)
+        ) : 1;
+        const value = f(this.move.category === "物理" ? poke.hb : poke.hd);
+        const robustnessMin = f(value / eff / 0.44);
+        const robustnessMax = f(value / eff / 0.374);
+        const damageMin = this.computedValue * eff * 0.375;
+        const damageMax = this.computedValue * eff * 0.44;
+        const timesMax = Math.ceil(value / damageMin);
+        const timesMin = Math.ceil(value / damageMax);
+        const comment = timesMin === timesMax ? (
+          "確定" + timesMin + "発"
+        ) : (
+          "乱数" + timesMin + "発 (" +
+          Math.round(
+            (1 - (value - damageMin * timesMin) / (damageMax - damageMin) / timesMin) * 100
+          ) +
+          "%)"
+        );
+        return {
+          name: poke.name,
+          label: poke.label,
+          valueMin: robustnessMin,
+          valueMax: robustnessMax,
+          comment,
+          effectiveness: eff,
+        };
+      }).filter(this.filter).sort((l, r) => r.valueMax - l.valueMax);
+    },
+  },
+});
 
 const vm = new Vue({
   el: "#app",
   data: () => ({
     pokemonNames,
     allTypes: types,
-    robustnessFilters,
     pokemonName: "",
     pokemonNameError: true,
     types: ["ノーマル"],
@@ -326,16 +474,6 @@ const vm = new Vue({
     autoEv: true,
     autoEvRatio: 0.5,
     tab: "",
-    speed: {
-      filter: speedFilters[0].value,
-    },
-    move: {
-      category: "物理",
-      type: "ノーマル",
-      strength: 90,
-      bonuses: { rank: 1, weather: 1, others: 1 },
-      filter: robustnessFilters[0].value,
-    }
   }),
   watch: {
     pokemonName() {
@@ -376,114 +514,69 @@ const vm = new Vue({
     },
     computedStats() {
       const baseStats = {
-        h: Math.floor(this.stats.h + this.iv.h / 2 + this.optStats.ev.h / 8) + 60,
-        a: Math.floor(this.stats.a + this.iv.a / 2 + this.optStats.ev.a / 8) + 5,
-        b: Math.floor(this.stats.b + this.iv.b / 2 + this.optStats.ev.b / 8) + 5,
-        c: Math.floor(this.stats.c + this.iv.c / 2 + this.optStats.ev.c / 8) + 5,
-        d: Math.floor(this.stats.d + this.iv.d / 2 + this.optStats.ev.d / 8) + 5,
-        s: Math.floor(this.stats.s + this.iv.s / 2 + this.optStats.ev.s / 8) + 5,
+        h: f(this.stats.h + this.iv.h / 2 + this.optStats.ev.h / 8) + 60,
+        a: f(this.stats.a + this.iv.a / 2 + this.optStats.ev.a / 8) + 5,
+        b: f(this.stats.b + this.iv.b / 2 + this.optStats.ev.b / 8) + 5,
+        c: f(this.stats.c + this.iv.c / 2 + this.optStats.ev.c / 8) + 5,
+        d: f(this.stats.d + this.iv.d / 2 + this.optStats.ev.d / 8) + 5,
+        s: f(this.stats.s + this.iv.s / 2 + this.optStats.ev.s / 8) + 5,
       };
       return {
         h: baseStats.h,
-        a: Math.floor(baseStats.a * this.optStats.n.a),
-        b: Math.floor(baseStats.b * this.optStats.n.b),
-        c: Math.floor(baseStats.c * this.optStats.n.c),
-        d: Math.floor(baseStats.d * this.optStats.n.d),
-        s: Math.floor(baseStats.s * this.optStats.n.s),
+        a: f(baseStats.a * this.optStats.n.a),
+        b: f(baseStats.b * this.optStats.n.b),
+        c: f(baseStats.c * this.optStats.n.c),
+        d: f(baseStats.d * this.optStats.n.d),
+        s: f(baseStats.s * this.optStats.n.s),
       };
     },
     computedStatsWithBonus() {
       return {
-        h: Math.floor(this.computedStats.h * this.bonus.h),
-        a: Math.floor(this.computedStats.a * this.bonus.a),
-        b: Math.floor(this.computedStats.b * this.bonus.b),
-        c: Math.floor(this.computedStats.c * this.bonus.c),
-        d: Math.floor(this.computedStats.d * this.bonus.d),
-        s: Math.floor(this.computedStats.s * this.bonus.s),
+        h: f(this.computedStats.h * this.bonus.h),
+        a: f(this.computedStats.a * this.bonus.a),
+        b: f(this.computedStats.b * this.bonus.b),
+        c: f(this.computedStats.c * this.bonus.c),
+        d: f(this.computedStats.d * this.bonus.d),
+        s: f(this.computedStats.s * this.bonus.s),
       };
     },
-    speeds() {
-      return speeds.sort((a, b) => b.s - a.s).filter(this.speed.filter);
-    },
-    moveIsSameType() {
-      return this.types.includes(this.move.type);
-    },
-    moveComputedStrength() {
-      return Math.floor(
-        this.move.strength * this.move.bonuses.rank *
-        this.move.bonuses.weather * this.move.bonuses.others *
-        (this.moveIsSameType ? 1.5 : 1)
-      );
-    },
-    moveComputedValue() {
-      const stats = this.computedStatsWithBonus[this.move.category === "物理" ? "a" : "c"];
-      return this.moveComputedStrength * stats;
-    },
-    robustnesses() {
-      return robustness.map((poke) => {
-        const eff = types.includes(this.move.type) ? (
-          poke.types.reduce((l, r) => l * effectiveness[this.move.type][r], 1)
-        ) : 1;
-        const value = Math.floor(this.move.category === "物理" ? poke.hb : poke.hd);
-        const robustnessMin = Math.floor(value / eff / 0.44);
-        const robustnessMax = Math.floor(value / eff / 0.374);
-        const damageMin = this.moveComputedValue * eff * 0.375;
-        const damageMax = this.moveComputedValue * eff * 0.44;
-        const timesMax = Math.ceil(value / damageMin);
-        const timesMin = Math.ceil(value / damageMax);
-        const comment = timesMin === timesMax ? (
-          "確定" + timesMin + "発"
-        ) : (
-          "乱数" + timesMin + "発 (" +
-          Math.round(
-            (1 - (value - damageMin * timesMin) / (damageMax - damageMin) / timesMin) * 100
-          ) +
-          "%)"
-        );
-        return {
-          name: poke.name,
-          label: poke.label,
-          valueMin: robustnessMin,
-          valueMax: robustnessMax,
-          comment,
-          effectiveness: eff,
-        };
-      }).filter(this.move.filter).sort((l, r) => r.valueMax - l.valueMax);
+    chartPolygons() {
+      const { h, a, b, c, d, s } = this.stats;
+      const { h: ch, a: ca, b: cb, c: cc, d: cd, s: cs } = this.computedStats;
+      const { h: wh, a: wa, b: wb, c: wc, d: wd, s: ws } = this.computedStatsWithBonus;
+      return [{
+        points: hexPoints([350, 175, 175, 175, 175, 175], 300),
+        fill: "rgba(0, 0, 0, 0.05)",
+      }, {
+        points: hexPoints([300, 150, 150, 150, 150, 150], 300),
+        stroke: "rgba(255, 255, 255, 1)",
+      }, {
+        points: hexPoints([200, 100, 100, 100, 100, 100], 300),
+        stroke: "rgba(255, 255, 255, 1)",
+      },  {
+        points: hexPoints([f(h+107), f(a+55), f(b+55), f(s+55), f(d+55), f(c+55),], 300),
+        stroke: "rgba(0, 0, 0, 0.25)",
+      }, {
+        points: hexPoints([f(h+75), f(a+20), f(b+20), f(s+20), f(d+20), f(c+20)], 300),
+        stroke: "rgba(0, 0, 0, 0.25)",
+      }, {
+        points: hexPoints([null, wa, null, ws, null, wc], 300),
+        fill: "rgba(255, 0, 0, 0.25)",
+        stroke: "rgba(255, 0, 0, 0.5)",
+      }, {
+        points: hexPoints([null, ca, null, cs, null, cc], 300),
+        fill: "rgba(255, 0, 0, 0.5)",
+      }, {
+        points: hexPoints([wh, null, wb, null, wd], 300),
+        fill: "rgba(0, 0, 255, 0.167)",
+        stroke: "rgba(0, 0, 255, 0.334)",
+      }, {
+        points: hexPoints([ch, null, cb, null, cd], 300),
+        fill: "rgba(0, 0, 255, 0.334)",
+      }];
     },
   },
   methods: {
-    initSpeedTab() {
-      if (this.tab !== "speed") {
-        this.tab = "speed";
-        this.speed = {
-          filter: speedFilters[0].value,
-        };
-      }
-    },
-    initAttackTab() {
-      if (this.tab !== "attack" || this.move.category !== "物理") {
-        this.tab = "attack";
-        this.move = {
-          category: "物理",
-          type: "ノーマル",
-          strength: 90,
-          bonuses: { rank: 1, weather: 1, others: 1 },
-          filter: robustnessFilters[0].value,
-        };
-      }
-    },
-    initSpAttackTab() {
-      if (this.tab !== "attack" || this.move.category !== "特殊") {
-        this.tab = "attack";
-        this.move = {
-          category: "特殊",
-          type: "ノーマル",
-          strength: 90,
-          bonuses: { rank: 1, weather: 1, others: 1 },
-          filter: robustnessFilters[0].value,
-        };
-      }
-    },
     initDefenceTab() {
       if (this.tab !== "defence") {
         this.tab = "defence";
