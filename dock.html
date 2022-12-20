@@ -370,6 +370,7 @@ td {
         <tr>
           <td>相手ポケモン</td>
           <td>ダメージ</td>
+          <td></td>
           <td>相性</td>
         </tr>
         <tr v-for="poke in list">
@@ -377,6 +378,7 @@ td {
           <td :style="{ backgroundImage: poke.gradient }">
             {{ r(poke.minDamageRatio * 100) }}〜{{ r(poke.maxDamageRatio * 100) }}%
           </td>
+          <td>{{ poke.count }}</td>
           <td>x {{ poke.effectiveness }}</td>
         </tr>
       </table>
@@ -542,6 +544,12 @@ const robustnessFilters = [{
   label: "ピックアップ",
   value: (po) => !!pickedupPokemons[po.name] && po.effectiveness !== 0,
 }, {
+  label: "ピックアップ（等倍以上）",
+  value: (po) => !!pickedupPokemons[po.name] && po.effectiveness >= 1,
+}, {
+  label: "ピックアップ（半減以下）",
+  value: (po) => !!pickedupPokemons[po.name] && po.effectiveness < 1,
+}, {
   label: "すべて (無効以外)",
   value: (po) => po.effectiveness !== 0,
 }, {
@@ -651,6 +659,11 @@ const RobustnessList = Vue.component("robustness-list", {
         );
         const minDamageRatio = minDamageWithBonus / p.value.h;
         const maxDamageRatio = maxDamageWithBonus / p.value.h;
+        const minCount = c(1 / maxDamageRatio);
+        const maxCount = c(1 / minDamageRatio);
+        const percentile = f(
+          (maxDamageRatio - 1 / minCount) / (maxDamageRatio - minDamageRatio) * 100
+        );
         const gradient = (
           "linear-gradient(to right, " +
           "rgba(255, 0, 0, 0.2) 0%, " +
@@ -671,6 +684,7 @@ const RobustnessList = Vue.component("robustness-list", {
           effectiveness: eff,
           robustness: defence * p.value.h / eff,
           gradient,
+          count: minCount === maxCount ? `${minCount}発(確定)` : `${minCount}発(${percentile}%)`,
         };
       }).filter(this.filter).sort((l, r) => r.robustness - l.robustness);
     },
