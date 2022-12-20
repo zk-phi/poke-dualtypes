@@ -139,6 +139,12 @@ td {
           <small>※ 青三角が正三角形のとき効率的な耐久指数 (H=B+D∧B=D) になります</small>
         </p>
 
+        <p>
+          <button @click="tab = 'attack'">一括ダメージ計算（物理）</button>
+          <button @click="tab = 'special-attack'">一括ダメージ計算（特殊）</button>
+          <button @click="tab = 'speed'">素早さ比較</button>
+        </p>
+
         <h3>努力値振り</h3>
 
         <p>
@@ -155,7 +161,7 @@ td {
             <td>道具・特性等</td>
             <td>lv{{ level }}実数値</td>
           </tr>
-          <tr @click="initDefenceTab">
+          <tr>
             <td>HP</td>
             <td>{{ stats.h }}</td>
             <td><input type="range" v-model="iv.h" min="0" max="31" step="1">{{ iv.h }}</td>
@@ -168,7 +174,7 @@ td {
               <span v-if="bonus.h != 1">({{ computedStatsAtLevel.withBonus.h }})</span>
             </td>
           </tr>
-          <tr @click="tab = 'attack'">
+          <tr>
             <td>攻撃</td>
             <td>{{ stats.a }}</td>
             <td><input type="range" v-model="iv.a" min="0" max="31" step="1">{{ iv.a }}</td>
@@ -180,7 +186,7 @@ td {
               <span v-if="bonus.a != 1">({{ computedStatsAtLevel.withBonus.a }})</span>
             </td>
           </tr>
-          <tr @click="initDefenceTab">
+          <tr>
             <td>防御</td>
             <td>{{ stats.b }}</td>
             <td><input type="range" v-model="iv.b" min="0" max="31" step="1">{{ iv.b }}</td>
@@ -194,7 +200,7 @@ td {
               <span v-if="bonus.b != 1">({{ computedStatsAtLevel.withBonus.b }})</span>
             </td>
           </tr>
-          <tr @click="tab = 'special-attack'">
+          <tr>
             <td>特攻</td>
             <td>{{ stats.c }}</td>
             <td><input type="range" v-model="iv.c" min="0" max="31" step="1">{{ iv.c }}</td>
@@ -206,7 +212,7 @@ td {
               <span v-if="bonus.c != 1">({{ computedStatsAtLevel.withBonus.c }})</span>
             </td>
           </tr>
-          <tr @click="initDefenceTab">
+          <tr>
             <td>特防</td>
             <td>{{ stats.d }}</td>
             <td><input type="range" v-model="iv.d" min="0" max="31" step="1">{{ iv.d }}</td>
@@ -220,7 +226,7 @@ td {
               <span v-if="bonus.d != 1">({{ computedStatsAtLevel.withBonus.d }})</span>
             </td>
           </tr>
-          <tr @click="tab = 'speed'">
+          <tr>
             <td>素早</td>
             <td>{{ stats.s }}</td>
             <td><input type="range" v-model="iv.s" min="0" max="31" step="1">{{ iv.s }}</td>
@@ -287,16 +293,11 @@ td {
         :item-bonus="bonus.c">
     </robustness-list>
 
-    <div v-if="tab === 'defence'" class="column">
-      <h2>どこまで耐えられるかな</h2>
-      WIP
-    </div>
-
   </div>
 
   <script type="text/x-template" id="speed-list">
     <div v-if="show" class="column">
-      <h2>すばやさ調整</h2>
+      <h2>素早さ比較</h2>
       <p>
         フィルタ：
         <select v-model="filter">
@@ -324,7 +325,7 @@ td {
 
   <script type="text/x-template" id="robustness-list">
     <div v-if="show" class="column">
-      <h2>ダメージ計算</h2>
+      <h2>一括ダメージ計算（{{ category }}）</h2>
       <table>
         <tr>
           <td>技タイプ</td>
@@ -778,13 +779,6 @@ const vm = new Vue({
         points: hexPoints([ch, null, cb, null, cd], 300),
         fill: "rgba(0, 0, 255, 0.334)",
       }];
-    },
-  },
-  methods: {
-    initDefenceTab() {
-      if (this.tab !== "defence") {
-        this.tab = "defence";
-      }
     },
   },
 });
