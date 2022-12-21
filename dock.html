@@ -548,7 +548,7 @@ const robustnessFilters = [{
   value: (po) => !!pickedupPokemons[po.name] && po.effectiveness >= 1,
 }, {
   label: "ピックアップ（半減以下）",
-  value: (po) => !!pickedupPokemons[po.name] && po.effectiveness < 1,
+  value: (po) => !!pickedupPokemons[po.name] && po.effectiveness < 1 && po.effectiveness !== 0,
 }, {
   label: "すべて (無効以外)",
   value: (po) => po.effectiveness !== 0,
