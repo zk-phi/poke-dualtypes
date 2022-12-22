@@ -32,6 +32,9 @@ td {
   border: white 1px solid;
   padding: 4px;
 }
+small {
+  font-weight: normal;
+}
   </style>
 </head>
 <body>
@@ -43,6 +46,10 @@ td {
 
     <datalist id="types">
       <option v-for="type in allTypes" :value="type" />
+    </datalist>
+
+    <datalist id="categories">
+      <option v-for="category in categories" :value="category" />
     </datalist>
 
     <div class="column glow">
@@ -147,8 +154,7 @@ td {
         </p>
 
         <p>
-          <button @click="tab = 'attack'">一括ダメージ計算（物理）</button>
-          <button @click="tab = 'special-attack'">一括ダメージ計算（特殊）</button>
+          <button @click="tab = 'attack'">一括ダメージ計算</button>
           <button @click="tab = 'speed'">素早さ比較</button>
         </p>
 
@@ -279,21 +285,11 @@ td {
     </speed-list>
 
     <robustness-list
-        category="物理"
         :show="tab === 'attack'"
         :types="types"
         :teratype="teratype"
-        :computed-attack="computedStats.a"
+        :computed-stats="computedStats"
         :item-bonus="bonus.a">
-    </robustness-list>
-
-    <robustness-list
-        category="特殊"
-        :show="tab === 'special-attack'"
-        :types="types"
-        :teratype="teratype"
-        :computed-attack="computedStats.c"
-        :item-bonus="bonus.c">
     </robustness-list>
 
   </div>
@@ -315,12 +311,17 @@ td {
         <tr>
           <td>相手ポケモン</td>
           <td>実数値</td>
-          <td>スカーフ</td>
+          <td>＋１</td>
+          <td>＋２</td>
         </tr>
         <tr v-for="poke in list">
-          <td>{{ poke.label }}</td>
+          <td>
+            {{ poke.name }}<br />
+            <small>{{ poke.label }}</small>
+          </td>
           <td :style="{ backgroundColor: colors[poke.value < computedSpeed] }">{{ poke.value }}</td>
-          <td :style="{ backgroundColor: colors[poke.scarf < computedSpeed] }">{{ poke.scarf }}</td>
+          <td :style="{ backgroundColor: colors[poke.r1 < computedSpeed] }">{{ poke.r1 }}</td>
+          <td :style="{ backgroundColor: colors[poke.r2 < computedSpeed] }">{{ poke.r2 }}</td>
         </tr>
       </table>
     </div>
@@ -328,33 +329,48 @@ td {
 
   <script type="text/x-template" id="robustness-list">
     <div v-if="show" class="column">
-      <h2>一括ダメージ計算（{{ category }}）</h2>
+      <h2>一括ダメージ計算</h2>
       <table>
         <tr>
           <td>技タイプ</td>
-          <td>分類</td>
-          <td>威力</td>
-          <td>タイプ一致</td>
-          <td>ランク上昇</td>
-          <td>天候</td>
-          <td>その他</td>
-          <td>テラスタル</td>
+          <td><input list="types" v-model="move.type"></td>
         </tr>
         <tr>
-          <td><input list="types" v-model="move.type"></td>
-          <td>{{ category }}</td>
+          <td>分類</td>
+          <td><input list="categories" v-model="move.category"></td>
+        </tr>
+        <tr>
+          <td>威力</td>
           <td><input type="number" v-model="move.strength" min="0" max="200" step="1"></td>
+        </tr>
+        <tr>
+          <td>タイプ一致補正</td>
           <td>x {{ sameTypeBonus }}</td>
+        </tr>
+        <tr>
+          <td>ランク上昇</td>
           <td>x <input type="number" v-model="move.bonuses.rank" min="0" max="2" step="0.5"></td>
+        </tr>
+        <tr>
+          <td>天候</td>
           <td>x <input type="number" v-model="move.bonuses.weather" min="0" max="2" step="0.5"></td>
+        </tr>
+        <tr>
+          <td>その他</td>
           <td>x <input type="number" v-model="move.bonuses.others" min="0" max="2" step="0.1"></td>
+        </tr>
+        <tr>
+          <td>テラスタル</td>
           <td><input type="checkbox" v-model="move.terastal" /></td>
         </tr>
+        <tr>
+          <td>実質威力</td>
+          <td>
+            {{ computedStrength }} (火力指数
+            {{ computedStrength * computedStats[move.category === "特殊" ? "c" : "a"] }})
+          </td>
+        </tr>
       </table>
-      <ul>
-        <li>HBD ... 物理・特殊バランス良く振った個体 (HBD/(B+D) が最大)</li>
-        <li>HB/HD ... 物理・特殊どちらかに全振りしている個体 (HB または HD が最大)</li>
-      </ul>
       <p>
         フィルタ：
         <select v-model="filter">
@@ -369,15 +385,18 @@ td {
         <tr>
           <td>相手ポケモン</td>
           <td>ダメージ</td>
-          <td></td>
           <td>相性</td>
         </tr>
         <tr v-for="poke in list">
-          <td>{{ poke.label }}</td>
+          <td>
+            {{ poke.name }}<br />
+            <small>{{ poke.label }}</small>
+          </td>
           <td :style="{ backgroundImage: poke.gradient }">
             {{ r(poke.minDamageRatio * 100) }}〜{{ r(poke.maxDamageRatio * 100) }}%
+            /
+            {{ poke.count }}
           </td>
-          <td>{{ poke.count }}</td>
           <td>x {{ poke.effectiveness }}</td>
         </tr>
       </table>
@@ -516,31 +535,35 @@ const SpeedList = Vue.component("speed-list", {
     list() {
       return pokemonNames.flatMap((name) => [{
         name,
-        label: name + " 個体値0",
+        label: "最遅",
         value: pokemons[name].stats.s + 5,
-        scarf: f((pokemons[name].stats.s + 5) * 1.5),
+        r1: f((pokemons[name].stats.s + 5) * 1.5),
+        r2: f((pokemons[name].stats.s + 5) * 2.0),
       }, {
         name,
-        label: name + " 4振り",
+        label: "S4",
         value: pokemons[name].stats.s + 21,
-        scarf: f((pokemons[name].stats.s + 21) * 1.5),
+        r1: f((pokemons[name].stats.s + 21) * 1.5),
+        r2: f((pokemons[name].stats.s + 21) * 2.0),
       }, {
         name,
-        label: name + " 252振り",
+        label: "S252",
         value: pokemons[name].stats.s + 52,
-        scarf: f((pokemons[name].stats.s + 52) * 1.5),
+        r1: f((pokemons[name].stats.s + 52) * 1.5),
+        r2:  f((pokemons[name].stats.s + 52) * 2.0),
       }, {
         name,
-        label: name + " 252振り＋補正",
+        label: "S252↑",
         value: f((pokemons[name].stats.s + 52) * 1.1),
-        scarf: f(f((pokemons[name].stats.s + 52) * 1.1) * 1.5),
+        r1: f(f((pokemons[name].stats.s + 52) * 1.1) * 1.5),
+        r2: f(f((pokemons[name].stats.s + 52) * 1.1) * 2.0),
       }]).sort((a, b) => b.value - a.value).filter(this.filter);
     },
   },
 });
 
 const robustnessFilters = [{
-  label: "ピックアップ",
+  label: "ピックアップ（無効以外）",
   value: (po) => !!pickedupPokemons[po.name] && po.effectiveness !== 0,
 }, {
   label: "ピックアップ（等倍以上）",
@@ -549,19 +572,25 @@ const robustnessFilters = [{
   label: "ピックアップ（半減以下）",
   value: (po) => !!pickedupPokemons[po.name] && po.effectiveness < 1 && po.effectiveness !== 0,
 }, {
+  label: "ピックアップ（抜群以上）",
+  value: (po) => !!pickedupPokemons[po.name] && po.effectiveness >= 2,
+}, {
+  label: "ピックアップ（等倍）",
+  value: (po) => !!pickedupPokemons[po.name] && po.effectiveness === 1,
+}, {
   label: "すべて (無効以外)",
   value: (po) => po.effectiveness !== 0,
 }, {
-  label: "等倍以上",
+  label: "すべて（等倍以上）",
   value: (po) => po.effectiveness >= 1,
 }, {
-  label: "半減以下",
+  label: "すべて（半減以下）",
   value: (po) => po.effectiveness <= 0.5 && po.effectiveness !== 0,
 }, {
-  label: "抜群以上",
+  label: "すべて（抜群以上）",
   value: (po) => po.effectiveness >= 2,
 }, {
-  label: "等倍",
+  label: "すべて（等倍）",
   value: (po) => po.effectiveness === 1,
 }];
 
@@ -569,10 +598,9 @@ const RobustnessList = Vue.component("robustness-list", {
   template: "#robustness-list",
   props: {
     show: { type: Boolean, required: true },
-    category: { type: String, required: true },
     types: { type: Array, required: true },
     teratype: { type: String, required: true },
-    computedAttack: { type: Number, required: true },
+    computedStats: { type: Array, required: true },
     itemBonus: { type: Number, required: true },
   },
   data: () => ({
@@ -596,6 +624,16 @@ const RobustnessList = Vue.component("robustness-list", {
         return this.types.includes(this.move.type) ? 1.5 : 1;
       }
     },
+    computedStrength() {
+      return f(
+        this.sameTypeBonus *
+        this.itemBonus *
+        this.move.strength *
+        this.move.bonuses.rank *
+        this.move.bonuses.weather *
+        this.move.bonuses.others
+      );
+    },
     patterns() {
       return pokemonNames.flatMap((name) => {
         const { stats, types } = pokemons[name];
@@ -606,32 +644,22 @@ const RobustnessList = Vue.component("robustness-list", {
         const n   = { a: 1,   b: 1, c: 1, d: 1, s: 1 };
         const noN = { a: 1.1, b: 1, c: 1, d: 1, s: 1 };
         const bonus = { h: 1, a: 1, b: 1, c: 1, d: 1, s: 1 };
-        const extreme = this.category === "物理" ? 0 : 1;
-        const extremeTag = this.category === "物理" ? "HB" : "HD";
+        const extreme = this.move.category === "特殊" ? 1 : 0;
         return [{
           name,
           types: pokemons[name].types,
-          tag: `４振り（${extremeTag}）`,
           ...bruteOptimizeHBD({ stats, iv, ev: ev4, n: noN, bonus }, extreme),
         }, {
           name,
           types: pokemons[name].types,
-          tag: `２５６振り (${extremeTag})`,
           ...bruteOptimizeHBD({ stats, iv, ev: ev256, n: noN, bonus }, extreme),
         }, {
           name,
           types: pokemons[name].types,
-          tag: "２５６振り（HBD）",
-          ...bruteOptimizeHBD({ stats, iv, ev: ev256, n: noN, bonus }, 0.5),
-        }, {
-          name,
-          types: pokemons[name].types,
-          tag: `５０８振り＋補正（${extremeTag}）`,
           ...bruteOptimizeHBD({ stats, iv, ev: ev508, n: n, bonus }, extreme),
         }, {
           name,
           types: pokemons[name].types,
-          tag: `５０８振り＋補正（HBD）`,
           ...bruteOptimizeHBD({ stats, iv, ev: ev508, n: n, bonus }, 0.5),
         }];
       });
@@ -642,8 +670,10 @@ const RobustnessList = Vue.component("robustness-list", {
         const eff = typeIsValid ? (
           p.types.reduce((l, r) => l * effectiveness[this.move.type][r], 1)
         ) : 1;
-        const defence = this.category === "物理" ? p.value.b : p.value.d;
-        const attack = f(this.computedAttack * this.move.bonuses.rank);
+        const defence = this.move.category === "特殊" ? p.value.d : p.value.b;
+        const attack = f(
+          this.computedStats[this.move.category === "特殊" ? "c" : "a"] * this.move.bonuses.rank
+        );
         const baseDamage = r(
           f(f(22 * this.move.strength * attack / defence) / 50 + 2) * this.move.bonuses.weather
         );
@@ -672,10 +702,15 @@ const RobustnessList = Vue.component("robustness-list", {
           "transparent " + (maxDamageRatio * 100) + "%" +
           ")"
         );
+        const label = [
+          `H${p.ev.h > 0 ? p.ev.h : ""}`,
+          `B${p.ev.b > 0 ? p.ev.b : ""}${p.n.b > 1 ? "↑" : ""}`,
+          `D${p.ev.d > 0 ? p.ev.d : ""}${p.n.d > 1 ? "↑" : ""}`,
+        ].filter((s) => s.length > 1).join(" - ");
         return {
           name: p.name,
-          label: `${p.name} ${p.tag}`,
           hp: p.value.h,
+          label: label,
           minDamage: minDamageWithBonus,
           maxDamage: maxDamageWithBonus,
           minDamageRatio,
