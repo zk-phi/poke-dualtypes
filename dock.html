@@ -101,7 +101,9 @@ td {
               <td>HP</td>
               <td>
                 {{ computedStats.h }}
-                <span v-if="bonus.h != 1">({{ computedStats.widthBonus.h }})</span>
+                <small v-if="computedStats.h % 16 === 15">16n-1</small>
+                <small v-else>16n+{{ computedStats.h % 16 }}</small>
+                <span v-if="bonus.h != 1">({{ computedStats.withBonus.h }})</span>
               </td>
             </tr>
             <tr>
@@ -160,7 +162,11 @@ td {
             <td></td>
             <td>種族値</td>
             <td>個体値</td>
-            <td>努力値</td>
+            <td>
+              努力値
+              <small v-if="autoEv">(残り{{ 508 - ev.a - ev.c - ev.s }})</small>
+              <small v-else>(残り{{ 508 - ev.h - ev.a - ev.b - ev.c - ev.d - ev.s }})</small>
+            </td>
             <td>性格補正</td>
             <td>道具・特性等</td>
             <td>lv{{ level }}実数値</td>
@@ -175,6 +181,8 @@ td {
             <td>x <input type="number" v-model="bonus.h" min="0" max="2" step="0.1"></td>
             <td>
               {{ computedStatsAtLevel.h }}
+              <small v-if="computedStatsAtLevel.h % 16 === 15">16n-1</small>
+              <small v-else>16n+{{ computedStatsAtLevel.h % 16 }}</small>
               <span v-if="bonus.h != 1">({{ computedStatsAtLevel.withBonus.h }})</span>
             </td>
           </tr>
@@ -242,20 +250,10 @@ td {
               <span v-if="bonus.s != 1">({{ computedStatsAtLevel.withBonus.s }})</span>
             </td>
           </tr>
-          <tr>
-            <td>残り</td>
-            <td></td>
-            <td></td>
-            <td v-if="autoEv">{{ 508 - ev.a - ev.c - ev.s }}</td>
-            <td v-else>{{ 508 - ev.h - ev.a - ev.b - ev.c - ev.d - ev.s }}</td>
-            <td></td>
-            <td></td>
-            <td></td>
-          </tr>
         </table>
 
         <p>
-          <label><input type="checkbox" v-model="autoEv"> 耐久を自動最適化</label>
+          <label><input type="checkbox" v-model="autoEv"> 残りを自動で耐久に振る</label>
           <span v-if="autoEv">
             (物理寄り
             <input type="range" min="0" max="1" step="0.01" v-model="autoEvRatio">
@@ -263,7 +261,7 @@ td {
             特殊寄り)
           </span>
           <br />
-          <small>※ 総合耐久指数 HBD/(B+D) が最大になる振り方を提案します</small>
+          <small>※ 総合耐久指数 HBD/(kB+D) が最大になる振り方を提案します</small>
         </p>
 
         <p>
