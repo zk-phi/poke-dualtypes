@@ -18,8 +18,11 @@ body {
   padding: 16px;
   border: 1px solid rgba(0, 0, 0, 0.1);
 }
-.column.glow {
-  flex-grow: 2;
+.column.left {
+  width: calc(100vw - 540px);
+}
+.column.right {
+  width: 540px;
 }
 table {
   border-spacing: 0;
@@ -52,7 +55,7 @@ small {
       <option v-for="category in categories" :value="category" />
     </datalist>
 
-    <div class="column glow">
+    <div class="left column">
       <h2>ポケモン育成支援</h2>
 
       <p>
@@ -280,12 +283,12 @@ small {
     </div>
 
     <speed-list
-        :show="tab === 'speed'"
+        :show="!pokemonNameError && tab === 'speed'"
         :computed-speed="computedStats.withBonus.s">
     </speed-list>
 
     <robustness-list
-        :show="tab === 'attack'"
+        :show="!pokemonNameError && tab === 'attack'"
         :types="types"
         :teratype="teratype"
         :computed-stats="computedStats"
@@ -295,7 +298,7 @@ small {
   </div>
 
   <script type="text/x-template" id="speed-list">
-    <div v-if="show" class="column">
+    <div v-if="show" class="right column">
       <h2>素早さ比較</h2>
       <p>
         フィルタ：
@@ -328,7 +331,7 @@ small {
   </script>
 
   <script type="text/x-template" id="robustness-list">
-    <div v-if="show" class="column">
+    <div v-if="show" class="right column">
       <h2>一括ダメージ計算</h2>
       <table>
         <tr>
