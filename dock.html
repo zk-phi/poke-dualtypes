@@ -295,7 +295,7 @@ small {
         :types="types"
         :teratype="teratype"
         :computed-stats="computedStats"
-        :item-bonus="bonus.a">
+        :item-bonus="bonus">
     </robustness-list>
 
   </div>
@@ -322,7 +322,7 @@ small {
         </tr>
         <tr v-for="poke in list">
           <td>
-            {{ poke.name }}<br />
+            {{ poke.name }} <small>{{ poke.tag }}</small><br />
             <small>{{ poke.label }}</small>
           </td>
           <td :style="{ backgroundColor: colors[poke.value < computedSpeed] }">{{ poke.value }}</td>
@@ -395,7 +395,7 @@ small {
         </tr>
         <tr v-for="poke in list">
           <td>
-            {{ poke.name }}<br />
+            {{ poke.name }} <small>{{ poke.tag }}</small><br />
             <small>{{ poke.label }}</small>
           </td>
           <td :style="{ backgroundImage: poke.gradient }">
@@ -541,24 +541,28 @@ const SpeedList = Vue.component("speed-list", {
     list() {
       return pokemonNames.flatMap((name) => [{
         name,
-        label: "最遅",
+        tag: "最遅",
+        label: "S0 (種族値0)",
         value: pokemons[name].stats.s + 5,
         r1: f((pokemons[name].stats.s + 5) * 1.5),
         r2: f((pokemons[name].stats.s + 5) * 2.0),
       }, {
         name,
+        tag: "4振",
         label: "S4",
         value: pokemons[name].stats.s + 21,
         r1: f((pokemons[name].stats.s + 21) * 1.5),
         r2: f((pokemons[name].stats.s + 21) * 2.0),
       }, {
         name,
+        tag: "準速",
         label: "S252",
         value: pokemons[name].stats.s + 52,
         r1: f((pokemons[name].stats.s + 52) * 1.5),
         r2:  f((pokemons[name].stats.s + 52) * 2.0),
       }, {
         name,
+        tag: "最速",
         label: "S252↑",
         value: f((pokemons[name].stats.s + 52) * 1.1),
         r1: f(f((pokemons[name].stats.s + 52) * 1.1) * 1.5),
@@ -607,7 +611,7 @@ const RobustnessList = Vue.component("robustness-list", {
     types: { type: Array, required: true },
     teratype: { type: String, required: true },
     computedStats: { type: Array, required: true },
-    itemBonus: { type: Number, required: true },
+    itemBonus: { type: Array, required: true },
   },
   data: () => ({
     filters: robustnessFilters,
@@ -633,7 +637,7 @@ const RobustnessList = Vue.component("robustness-list", {
     computedStrength() {
       return f(
         this.sameTypeBonus *
-        this.itemBonus *
+        this.itemBonus[this.move.category === "特殊" ? "c" : "a"] *
         this.move.strength *
         this.move.bonuses.rank *
         this.move.bonuses.weather *
@@ -651,20 +655,25 @@ const RobustnessList = Vue.component("robustness-list", {
         const noN = { a: 1.1, b: 1, c: 1, d: 1, s: 1 };
         const bonus = { h: 1, a: 1, b: 1, c: 1, d: 1, s: 1 };
         const extreme = this.move.category === "特殊" ? 1 : 0;
+        const tagName = this.move.category === "特殊" ? "特殊" : "物理";
         return [{
           name,
+          tag: `${tagName}4振り`,
           types: pokemons[name].types,
           ...bruteOptimizeHBD({ stats, iv, ev: ev4, n: noN, bonus }, extreme),
         }, {
           name,
+          tag: `${tagName}256振り`,
           types: pokemons[name].types,
           ...bruteOptimizeHBD({ stats, iv, ev: ev256, n: noN, bonus }, extreme),
         }, {
           name,
+          tag: `耐久特化 (${tagName})`,
           types: pokemons[name].types,
           ...bruteOptimizeHBD({ stats, iv, ev: ev508, n: n, bonus }, extreme),
         }, {
           name,
+          tag: `耐久特化 (総合)`,
           types: pokemons[name].types,
           ...bruteOptimizeHBD({ stats, iv, ev: ev508, n: n, bonus }, 0.5),
         }];
@@ -686,12 +695,9 @@ const RobustnessList = Vue.component("robustness-list", {
         const minBaseDamage = f(baseDamage * 0.85);
         const maxDamage = f(r(baseDamage * this.sameTypeBonus) * eff);
         const minDamage = f(r(minBaseDamage * this.sameTypeBonus) * eff);
-        const maxDamageWithBonus = r(
-          r(maxDamage * this.itemBonus) * this.move.bonuses.others
-        );
-        const minDamageWithBonus = r(
-          r(minDamage * this.itemBonus) * this.move.bonuses.others
-        );
+        const itemBonus = this.itemBonus[this.move.category === "特殊" ? "c" : "a"];
+        const maxDamageWithBonus = r(r(maxDamage * itemBonus) * this.move.bonuses.others);
+        const minDamageWithBonus = r(r(minDamage * itemBonus) * this.move.bonuses.others);
         const minDamageRatio = minDamageWithBonus / p.value.h;
         const maxDamageRatio = maxDamageWithBonus / p.value.h;
         const minCount = c(1 / maxDamageRatio);
@@ -716,6 +722,7 @@ const RobustnessList = Vue.component("robustness-list", {
         return {
           name: p.name,
           hp: p.value.h,
+          tag: p.tag,
           label: label,
           minDamage: minDamageWithBonus,
           maxDamage: maxDamageWithBonus,
