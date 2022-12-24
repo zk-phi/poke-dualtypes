@@ -542,7 +542,7 @@ const SpeedList = Vue.component("speed-list", {
       return pokemonNames.flatMap((name) => [{
         name,
         tag: "最遅",
-        label: "S0↓ (種族値0)",
+        label: "S0↓ (個体値0)",
         value: pokemons[name].stats.s + 5,
         r1: f((pokemons[name].stats.s + 5) * 1.5),
         r2: f((pokemons[name].stats.s + 5) * 2.0),
