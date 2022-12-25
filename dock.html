@@ -42,7 +42,10 @@ small {
 </head>
 <body>
   <div id="app">
+    <main-app />
+  </div>
 
+  <script type="text/x-template" id="main-app">
     <datalist id="pokemon-names">
       <option v-for="name in pokemonNames" :value="name" />
     </datalist>
@@ -297,8 +300,7 @@ small {
         :computed-stats="computedStats"
         :item-bonus="bonus">
     </robustness-list>
-
-  </div>
+  </script>
 
   <script type="text/x-template" id="speed-list">
     <div v-if="show" class="right column">
@@ -519,7 +521,10 @@ const evaluateStats = ({ stats, ev, iv, n, bonus }, level) => {
   };
 };
 
-const app = Vue.createApp({
+const app = Vue.createApp({});
+
+const App = app.component("main-app", {
+  template: "#main-app",
   data: () => ({
     categories,
     pokemonNames,
