@@ -1,6 +1,6 @@
 <head>
   <meta charset="utf-8"/>
-  <script src="https://cdn.jsdelivr.net/npm/vue@2.7.10"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3.2.36/dist/vue.global.js"></script>
   <style>
 * {
   box-sizing: border-box;
@@ -519,6 +519,122 @@ const evaluateStats = ({ stats, ev, iv, n, bonus }, level) => {
   };
 };
 
+const app = Vue.createApp({
+  data: () => ({
+    categories,
+    pokemonNames,
+    typeAbbrevs,
+    colors,
+    f,
+    r,
+    c,
+    effectiveness,
+    allTypes: types,
+    pokemonName: "",
+    pokemonNameError: true,
+    level: 50,
+    types: ["ノーマル"],
+    teratype: "ノーマル",
+    stats: { h: 0, a: 0, b: 0, c: 0, d: 0, s: 0 },
+    iv: { h: 31, a: 31, b: 31, c: 31, d: 31, s: 31 },
+    ev: { h: 0, a: 0, b: 0, c: 0, d: 0, s: 0 },
+    n: { a: 1, b: 1, c: 1, d: 1, s: 1 },
+    bonus: { h: 1, a: 1, b: 1, c: 1, d: 1, s: 1 },
+    autoEv: true,
+    autoEvRatio: 0.5,
+    tab: "",
+  }),
+  watch: {
+    pokemonName() {
+      const pokemon = pokemons[this.pokemonName];
+      if (pokemon) {
+        this.pokemonNameError = false;
+        this.level = 50;
+        this.types = pokemon.types;
+        this.teratype = pokemon.types[0];
+        this.stats = pokemon.stats;
+        this.iv = { h: 31, a: 31, b: 31, c: 31, d: 31, s: 31 };
+        this.ev = { h: 0, a: 0, b: 0, c: 0, d: 0, s: 0 };
+        this.n = { a: 1, b: 1, c: 1, d: 1, s: 1 };
+        this.bonus = { h: 1, a: 1, b: 1, c: 1, d: 1, s: 1 };
+      } else {
+        this.pokemonNameError = true;
+      }
+    },
+  },
+  computed: {
+    defEffectiveness() {
+      return types.map((t) => this.types.reduce((l, r) => l * effectiveness[t][r], 1));
+    },
+    optStats() {
+      if (this.autoEv) {
+        return bruteOptimizeHBD({
+          stats: this.stats,
+          iv: numbifyStats(this.iv),
+          ev: numbifyStats({ h: 0, a: this.ev.a, b: 0, c: this.ev.c, d: 0, s: this.ev.s }),
+          n: numbifyStats(this.n),
+          bonus: numbifyStats(this.bonus),
+        }, this.autoEvRatio);
+      } else {
+        return { n: this.n, ev: this.ev };
+      }
+    },
+    computedStats() {
+      return evaluateStats({
+        stats: numbifyStats(this.stats),
+        iv: numbifyStats(this.iv),
+        ev: numbifyStats(this.optStats.ev),
+        n: numbifyStats(this.optStats.n),
+        bonus: numbifyStats(this.bonus),
+      }, 50);
+    },
+    computedStatsAtLevel() {
+      return evaluateStats({
+        stats: numbifyStats(this.stats),
+        iv: numbifyStats(this.iv),
+        ev: numbifyStats(this.optStats.ev),
+        n: numbifyStats(this.optStats.n),
+        bonus: numbifyStats(this.bonus),
+      }, this.level);
+    },
+    chartPolygons() {
+      const { h, a, b, c, d, s } = this.stats;
+      const { h: ch, a: ca, b: cb, c: cc, d: cd, s: cs } = this.computedStats;
+      const { h: wh, a: wa, b: wb, c: wc, d: wd, s: ws } = this.computedStats.withBonus;
+      return [{
+        points: hexPoints([350, 175, 175, 175, 175, 175], 300),
+        fill: "rgba(0, 0, 0, 0.05)",
+      }, {
+        points: hexPoints([300, 150, 150, 150, 150, 150], 300),
+        stroke: "rgba(255, 255, 255, 1)",
+      }, {
+        points: hexPoints([200, 100, 100, 100, 100, 100], 300),
+        stroke: "rgba(255, 255, 255, 1)",
+      },  {
+        points: hexPoints([f(h+107), f(a+52), f(b+52), f(s+52), f(d+52), f(c+52),], 300),
+        stroke: "rgba(0, 0, 0, 0.25)",
+      }, {
+        points: hexPoints([f(h+75), f(a+20), f(b+20), f(s+20), f(d+20), f(c+20)], 300),
+        stroke: "rgba(0, 0, 0, 0.25)",
+      }, {
+        points: hexPoints([null, wa, null, ws, null, wc], 300),
+        fill: "rgba(255, 0, 0, 0.25)",
+        stroke: "rgba(255, 0, 0, 0.5)",
+      }, {
+        points: hexPoints([null, ca, null, cs, null, cc], 300),
+        fill: "rgba(255, 0, 0, 0.5)",
+      }, {
+        points: hexPoints([wh, null, wb, null, wd], 300),
+        fill: "rgba(0, 0, 255, 0.167)",
+        stroke: "rgba(0, 0, 255, 0.334)",
+      }, {
+        points: hexPoints([ch, null, cb, null, cd], 300),
+        fill: "rgba(0, 0, 255, 0.334)",
+      }];
+    },
+  },
+});
+
 const speedFilters = [{
   label: "ピックアップ",
   value: (po) => !!pickedupPokemons[po.name],
@@ -527,13 +643,14 @@ const speedFilters = [{
   value: (po) => true,
 }];
 
-const SpeedList = Vue.component("speed-list", {
+const SpeedList = app.component("speed-list", {
   template: "#speed-list",
   props: {
     show: { type: Boolean, required: true },
     computedSpeed: { type: Number, required: true },
   },
   data: () => ({
+    colors,
     filters: speedFilters,
     filter: speedFilters[0].value,
   }),
@@ -604,16 +721,19 @@ const robustnessFilters = [{
   value: (po) => po.effectiveness === 1,
 }];
 
-const RobustnessList = Vue.component("robustness-list", {
+const RobustnessList = app.component("robustness-list", {
   template: "#robustness-list",
   props: {
     show: { type: Boolean, required: true },
     types: { type: Array, required: true },
     teratype: { type: String, required: true },
-    computedStats: { type: Array, required: true },
-    itemBonus: { type: Array, required: true },
+    computedStats: { type: Object, required: true },
+    itemBonus: { type: Object, required: true },
   },
   data: () => ({
+    f,
+    r,
+    c,
     filters: robustnessFilters,
     filter: robustnessFilters[0].value,
     move: {
@@ -738,114 +858,6 @@ const RobustnessList = Vue.component("robustness-list", {
   },
 });
 
-const vm = new Vue({
-  el: "#app",
-  data: () => ({
-    pokemonNames,
-    allTypes: types,
-    pokemonName: "",
-    pokemonNameError: true,
-    level: 50,
-    types: ["ノーマル"],
-    teratype: "ノーマル",
-    stats: { h: 0, a: 0, b: 0, c: 0, d: 0, s: 0 },
-    iv: { h: 31, a: 31, b: 31, c: 31, d: 31, s: 31 },
-    ev: { h: 0, a: 0, b: 0, c: 0, d: 0, s: 0 },
-    n: { a: 1, b: 1, c: 1, d: 1, s: 1 },
-    bonus: { h: 1, a: 1, b: 1, c: 1, d: 1, s: 1 },
-    autoEv: true,
-    autoEvRatio: 0.5,
-    tab: "",
-  }),
-  watch: {
-    pokemonName() {
-      const pokemon = pokemons[this.pokemonName];
-      if (pokemon) {
-        this.pokemonNameError = false;
-        this.level = 50;
-        this.types = pokemon.types;
-        this.teratype = pokemon.types[0];
-        this.stats = pokemon.stats;
-        this.iv = { h: 31, a: 31, b: 31, c: 31, d: 31, s: 31 };
-        this.ev = { h: 0, a: 0, b: 0, c: 0, d: 0, s: 0 };
-        this.n = { a: 1, b: 1, c: 1, d: 1, s: 1 };
-        this.bonus = { h: 1, a: 1, b: 1, c: 1, d: 1, s: 1 };
-      } else {
-        this.pokemonNameError = true;
-      }
-    },
-  },
-  computed: {
-    defEffectiveness() {
-      return types.map((t) => this.types.reduce((l, r) => l * effectiveness[t][r], 1));
-    },
-    optStats() {
-      if (this.autoEv) {
-        return bruteOptimizeHBD({
-          stats: this.stats,
-          iv: numbifyStats(this.iv),
-          ev: numbifyStats({ h: 0, a: this.ev.a, b: 0, c: this.ev.c, d: 0, s: this.ev.s }),
-          n: numbifyStats(this.n),
-          bonus: numbifyStats(this.bonus),
-        }, this.autoEvRatio);
-      } else {
-        return { n: this.n, ev: this.ev };
-      }
-    },
-    computedStats() {
-      return evaluateStats({
-        stats: numbifyStats(this.stats),
-        iv: numbifyStats(this.iv),
-        ev: numbifyStats(this.optStats.ev),
-        n: numbifyStats(this.optStats.n),
-        bonus: numbifyStats(this.bonus),
-      }, 50);
-    },
-    computedStatsAtLevel() {
-      return evaluateStats({
-        stats: numbifyStats(this.stats),
-        iv: numbifyStats(this.iv),
-        ev: numbifyStats(this.optStats.ev),
-        n: numbifyStats(this.optStats.n),
-        bonus: numbifyStats(this.bonus),
-      }, this.level);
-    },
-    chartPolygons() {
-      const { h, a, b, c, d, s } = this.stats;
-      const { h: ch, a: ca, b: cb, c: cc, d: cd, s: cs } = this.computedStats;
-      const { h: wh, a: wa, b: wb, c: wc, d: wd, s: ws } = this.computedStats.withBonus;
-      return [{
-        points: hexPoints([350, 175, 175, 175, 175, 175], 300),
-        fill: "rgba(0, 0, 0, 0.05)",
-      }, {
-        points: hexPoints([300, 150, 150, 150, 150, 150], 300),
-        stroke: "rgba(255, 255, 255, 1)",
-      }, {
-        points: hexPoints([200, 100, 100, 100, 100, 100], 300),
-        stroke: "rgba(255, 255, 255, 1)",
-      },  {
-        points: hexPoints([f(h+107), f(a+52), f(b+52), f(s+52), f(d+52), f(c+52),], 300),
-        stroke: "rgba(0, 0, 0, 0.25)",
-      }, {
-        points: hexPoints([f(h+75), f(a+20), f(b+20), f(s+20), f(d+20), f(c+20)], 300),
-        stroke: "rgba(0, 0, 0, 0.25)",
-      }, {
-        points: hexPoints([null, wa, null, ws, null, wc], 300),
-        fill: "rgba(255, 0, 0, 0.25)",
-        stroke: "rgba(255, 0, 0, 0.5)",
-      }, {
-        points: hexPoints([null, ca, null, cs, null, cc], 300),
-        fill: "rgba(255, 0, 0, 0.5)",
-      }, {
-        points: hexPoints([wh, null, wb, null, wd], 300),
-        fill: "rgba(0, 0, 255, 0.167)",
-        stroke: "rgba(0, 0, 255, 0.334)",
-      }, {
-        points: hexPoints([ch, null, cb, null, cd], 300),
-        fill: "rgba(0, 0, 255, 0.334)",
-      }];
-    },
-  },
-});
+app.mount("#app");
   </script>
 </body>
