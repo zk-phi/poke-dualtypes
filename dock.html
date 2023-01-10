@@ -401,7 +401,7 @@ small {
             <small>{{ poke.label }}</small>
           </td>
           <td :style="{ backgroundImage: poke.gradient }">
-            {{ r(poke.minDamageRatio * 100) }}〜{{ r(poke.maxDamageRatio * 100) }}%
+            {{ f(poke.minDamageRatio * 100) }}〜{{ f(poke.maxDamageRatio * 100) }}%
             /
             {{ poke.count }}
           </td>
@@ -415,7 +415,7 @@ small {
   <script>
 const f = Math.floor;
 const r = Math.round;
-const c = Math.ceil;
+const c = Math.ceil; /* FIXME: 本来は一部には四捨五超入を使う */
 
 const colors = {
   "0": "rgba(0, 0, 0, 0.3)",
