@@ -461,7 +461,14 @@ const bruteOptimizeHBD = ({ stats, iv, ev, n, bonus }, balance = 0.5) => {
     const d = Math.floor(
       Math.floor((Math.floor(stats.d + iv.d / 2 + ev.d / 8) + 5) * n.d) * bonus.d
     );
-    return { h, b, d, value: h * b * d / (2 * balance * b + (2 - 2 * balance) * d) };
+    return {
+      h,
+      b,
+      d,
+      hb: h * b,
+      hd: h * d,
+      hbd: h * b * d / (2 * balance * b + (2 - 2 * balance) * d),
+    };
   };
 
   let maxValue = evaluate({ stats, iv, ev, n });
@@ -476,9 +483,9 @@ const bruteOptimizeHBD = ({ stats, iv, ev, n, bonus }, balance = 0.5) => {
         if (dh + db + dd <= remainingEv && ev.d + dd <= 252) {
           const newEv = { h: ev.h + dh, a: ev.a, b: ev.b + db, c: ev.c, d: ev.d + dd, s: ev.s };
           const value = evaluate({ stats, iv, n, ev: newEv });
-          if (value.value > maxValue.value ||
-              (value.value === maxValue.value && newEv.h > maxEv.h) ||
-              (value.value === maxValue.value && newEv.b > maxEv.b)) {
+          if (value.hbd > maxValue.hbd ||
+              (value.hbd === maxValue.hbd && newEv.h > maxEv.h) ||
+              (value.hbd === maxValue.hbd && newEv.b > maxEv.b)) {
             maxValue = value;
             maxEv = newEv;
             maxN = n;
@@ -773,35 +780,40 @@ const RobustnessList = app.component("robustness-list", {
       return pokemonNames.flatMap((name) => {
         const { stats, types } = pokemons[name];
         const iv = { h: 31, a:31, b: 31, c: 31, d: 31, h: 31 };
-        const ev508 = { h: 0, a: 0,   b: 0, c: 0, d: 0, s: 0 };
-        const ev256 = { h: 0, a: 252, b: 0, c: 0, d: 0, s: 0 };
-        const ev4   = { h: 0, a: 252, b: 0, c: 0, d: 0, s: 252 };
+        const ev508 = { h: 0,   a: 0,   b: 0, c: 0, d: 0, s: 0   };
+        const ev504 = { h: 0,   a: 4,   b: 0, c: 0, d: 0, s: 0   };
+        const ev256 = { h: 0,   a: 252, b: 0, c: 0, d: 0, s: 0   };
+        const ev4   = { h: 0,   a: 252, b: 0, c: 0, d: 0, s: 252 };
+        const h252  = { h: 252, a: 252, b: 0, c: 0, d: 0, s: 0   };
         const n   = { a: 1,   b: 1, c: 1, d: 1, s: 1 };
         const noN = { a: 1.1, b: 1, c: 1, d: 1, s: 1 };
         const bonus = { h: 1, a: 1, b: 1, c: 1, d: 1, s: 1 };
-        const extreme = this.move.category === "特殊" ? 1 : 0;
-        const tagName = this.move.category === "特殊" ? "特殊" : "物理";
+        const extreme  = this.move.category === "特殊" ? 1 : 0;
+        const tagName  = this.move.category === "特殊" ? "D" : "B";
+        const valueKey = this.move.category === "特殊" ? "hd" : "hb";
         return [{
           name,
-          tag: `${tagName}4振り`,
+          tag: "4振り",
           types: pokemons[name].types,
           ...bruteOptimizeHBD({ stats, iv, ev: ev4, n: noN, bonus }, extreme),
         }, {
           name,
-          tag: `${tagName}256振り`,
+          tag: "H252＋余り",
           types: pokemons[name].types,
-          ...bruteOptimizeHBD({ stats, iv, ev: ev256, n: noN, bonus }, extreme),
+          ...bruteOptimizeHBD({ stats, iv, ev: h252, n: noN, bonus }, extreme),
         }, {
           name,
-          tag: `耐久特化 (${tagName})`,
-          types: pokemons[name].types,
-          ...bruteOptimizeHBD({ stats, iv, ev: ev508, n: n, bonus }, extreme),
-        }, {
-          name,
-          tag: `耐久特化 (総合)`,
+          tag: "総合耐久調整",
           types: pokemons[name].types,
           ...bruteOptimizeHBD({ stats, iv, ev: ev508, n: n, bonus }, 0.5),
-        }];
+        }, {
+          name,
+          tag: `H${tagName}特化`,
+          types: pokemons[name].types,
+          ...bruteOptimizeHBD({ stats, iv, ev: ev504, n: n, bonus }, extreme),
+        }].filter((_, ix, a) => (
+          ix === 0 || a[ix].value[valueKey] > a[ix - 1].value[valueKey]
+        ));
       });
     },
     list() {
